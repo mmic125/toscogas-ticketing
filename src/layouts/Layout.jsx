@@ -25,6 +25,11 @@ function IconMenu() {
 function IconClose() {
   return <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
 }
+function IconKanban() {
+  return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+  </svg>
+}
 
 // Voci di menu per ruolo
 function getMenuVoci(ruolo) {
@@ -32,6 +37,7 @@ function getMenuVoci(ruolo) {
     case RUOLI.COORDINATORE:
   return [
     { to: '/coordinatore',         label: 'Tutti i Ticket',  icon: <IconTicket /> },
+    { to: '/coordinatore/kanban',  label: 'Kanban Board',    icon: <IconKanban /> },
     { to: '/coordinatore/nuovo',   label: 'Nuovo Ticket',    icon: <IconPlus /> },
     { to: '/coordinatore/analisi', label: 'Analisi',         icon: <IconChart /> },
     { to: '/coordinatore/utenti',  label: 'Gestione Utenti', icon: <IconUsers /> },
@@ -44,6 +50,7 @@ function getMenuVoci(ruolo) {
     case RUOLI.MANUTENTORE:
       return [
         { to: '/manutentore',          label: 'Ticket Assegnati',  icon: <IconTicket /> },
+        { to: '/manutentore/kanban',   label: 'Kanban Board',      icon: <IconKanban /> },
       ]
     case RUOLI.SEGNALATORE_MANUTENTORE:
       return [

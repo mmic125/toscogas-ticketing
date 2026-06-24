@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
   TIPI_INTERVENTO, PRIORITA_LABEL, STATI_LABEL,
-  PRIORITA_COLORS, STATO_COLORS,
+  PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE,
   MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI
 } from '../../lib/costanti'
 
@@ -35,6 +35,8 @@ export default function LavorazioneTicket() {
   const [form, setForm] = useState({
     codice_cliente:       '',
     nome_cliente:         '',
+    telefono:             '',
+    provincia:            '',
     matricola_serbatoio:  '',
     note_intervento:      '',
     materiale_utilizzato: '',
@@ -61,6 +63,8 @@ export default function LavorazioneTicket() {
     setForm({
       codice_cliente:       t.codice_cliente || '',
       nome_cliente:         t.nome_cliente || '',
+      telefono:             t.telefono || '',
+      provincia:            t.provincia || '',
       matricola_serbatoio:  t.matricola_serbatoio || '',
       note_intervento:      t.note_intervento || '',
       materiale_utilizzato: t.materiale_utilizzato || '',
@@ -127,6 +131,8 @@ export default function LavorazioneTicket() {
 
   const codiceModificabile    = !ticket?.codice_cliente
   const nomeModificabile      = !ticket?.nome_cliente
+  const telefonoModificabile  = !ticket?.telefono
+  const provinciaModificabile = !ticket?.provincia
   const matricolaModificabile = !ticket?.matricola_serbatoio
 
   async function salvaEAggiorna(nuovoStato) {
@@ -139,6 +145,8 @@ export default function LavorazioneTicket() {
 
     if (codiceModificabile)    aggiornamenti.codice_cliente      = form.codice_cliente || null
     if (nomeModificabile)      aggiornamenti.nome_cliente        = form.nome_cliente || null
+    if (telefonoModificabile)  aggiornamenti.telefono            = form.telefono || null
+    if (provinciaModificabile) aggiornamenti.provincia           = form.provincia || null
     if (matricolaModificabile) aggiornamenti.matricola_serbatoio = form.matricola_serbatoio || null
 
     if (nuovoStato === 'risolto') {
@@ -247,6 +255,28 @@ export default function LavorazioneTicket() {
                 disabled={!nomeModificabile || chiuso}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Telefono</label>
+              <input type="tel" name="telefono" value={form.telefono} onChange={handleChange}
+                disabled={!telefonoModificabile || chiuso}
+                placeholder="—"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Provincia</label>
+              {provinciaModificabile && !chiuso ? (
+                <select name="provincia" value={form.provincia} onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                  <option value="">Seleziona...</option>
+                  {Object.entries(PROVINCE).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type="text" value={form.provincia || '—'} disabled
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400" />
+              )}
+            </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Matricola Serbatoio</label>
               <input type="text" name="matricola_serbatoio" value={form.matricola_serbatoio} onChange={handleChange}
@@ -261,12 +291,20 @@ export default function LavorazioneTicket() {
           <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Tipologia di Intervento</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Categoria</p>
+              <p className="text-gray-800">{CATEGORIE[ticket.categoria] || '—'}</p>
+            </div>
+            <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Tipologia</p>
               <p className="text-gray-800">{TIPI_INTERVENTO[ticket.tipo_problema] || ticket.tipo_problema}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Priorità</p>
               <Badge testo={PRIORITA_LABEL[ticket.priorita]} colori={PRIORITA_COLORS[ticket.priorita]} />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Intervento Richiesto</p>
+              <p className="text-gray-800">{ticket.data_intervento_richiesta || '—'}</p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">

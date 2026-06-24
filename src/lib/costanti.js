@@ -30,6 +30,27 @@ export const TIPI_INTERVENTO = {
   installazione_serbatoio:        'Installazione serbatoio',
   sostituzione_serbatoio:         'Sostituzione serbatoio',
   rimozione_serbatoio:            'Rimozione serbatoio',
+  sopralluogo:                    'Sopralluogo',
+  nuova_pratica:                  'Nuova pratica',
+  condizioni_commerciali:         'Condizioni commerciali',
+}
+
+export const TIPI_INTERVENTO_COMMERCIALE = {
+  sopralluogo:          'Sopralluogo',
+  nuova_pratica:        'Nuova pratica',
+  condizioni_commerciali: 'Condizioni commerciali',
+}
+
+export const TIPI_INTERVENTO_TECNICO = {
+  sopralluogo:                    'Sopralluogo',
+  guasto_contatore:               'Guasto contatore',
+  manutenzione_serbatoio:         'Manutenzione serbatoio',
+  telecontrollo:                  'Telecontrollo',
+  rimozione_contatore_morosita:   'Rimozione contatore per morosità',
+  installazione_nuovo_contatore:  'Installazione nuovo contatore',
+  installazione_serbatoio:        'Installazione serbatoio',
+  sostituzione_serbatoio:         'Sostituzione serbatoio',
+  rimozione_serbatoio:            'Rimozione serbatoio',
 }
 
 // Manteniamo TIPI_PROBLEMA come alias per compatibilità

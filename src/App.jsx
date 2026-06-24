@@ -1,24 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { RUOLI } from './lib/costanti'
-import Login from './pages/auth/Login'
 import Layout from './layouts/Layout'
-import NuovoTicket from './pages/segnalatore/NuovoTicket'
-import ListaTicket from './pages/coordinatore/ListaTicket'
-import DettaglioTicket from './pages/coordinatore/DettaglioTicket'
-import ListaTicketAperti from './pages/segnalatore/ListaTicketAperti'
-import ListaTicketAssegnati from './pages/manutentore/ListaTicketAssegnati'
-import LavorazioneTicket from './pages/manutentore/LavorazioneTicket'
-import Analisi from './pages/coordinatore/Analisi'
-import ConfigUtenti from './pages/coordinatore/ConfigUtenti'
 
-// Pagine temporanee placeholder (le costruiamo una per una)
-const Placeholder = ({ titolo }) => (
-  <div className="bg-white rounded-xl shadow-sm p-8">
-    <h1 className="text-xl font-semibold text-gray-800">{titolo}</h1>
-    <p className="text-gray-400 text-sm mt-1">Pagina in costruzione</p>
-  </div>
-)
+// Auth
+import Login from './pages/auth/Login'
+
+// Coordinatore
+import ListaTicket     from './pages/coordinatore/ListaTicket'
+import DettaglioTicket from './pages/coordinatore/DettaglioTicket'
+import Analisi          from './pages/coordinatore/Analisi'
+import ConfigUtenti     from './pages/coordinatore/ConfigUtenti'
+import KanbanBoard      from './pages/coordinatore/KanbanBoard'
+
+// Segnalatore
+import NuovoTicket       from './pages/segnalatore/NuovoTicket'
+import ListaTicketAperti from './pages/segnalatore/ListaTicketAperti'
+
+// Manutentore
+import ListaTicketAssegnati  from './pages/manutentore/ListaTicketAssegnati'
+import LavorazioneTicket     from './pages/manutentore/LavorazioneTicket'
+import KanbanBoardManutentore from './pages/manutentore/KanbanBoard'
 
 function LoadingScreen() {
   return (
@@ -65,6 +67,7 @@ function AppRoutes() {
         </ProtectedRoute>
       }>
         <Route index element={<ListaTicket />} />
+        <Route path="kanban" element={<KanbanBoard />} />
         <Route path="ticket/:id" element={<DettaglioTicket />} />
         <Route path="analisi" element={<Analisi />} />
         <Route path="utenti" element={<ConfigUtenti />} />
@@ -79,6 +82,7 @@ function AppRoutes() {
       }>
         <Route index element={<ListaTicketAperti />} />
         <Route path="nuovo" element={<NuovoTicket />} />
+        <Route path="ticket/:id" element={<NuovoTicket />} />
       </Route>
 
       {/* Manutentore */}
@@ -88,6 +92,7 @@ function AppRoutes() {
         </ProtectedRoute>
       }>
         <Route index element={<ListaTicketAssegnati />} />
+        <Route path="kanban" element={<KanbanBoardManutentore />} />
         <Route path="ticket/:id" element={<LavorazioneTicket />} />
       </Route>
 
@@ -97,8 +102,8 @@ function AppRoutes() {
           <Layout />
         </ProtectedRoute>
       }>
-        <Route index element={<Placeholder titolo="Ticket Assegnati" />} />
-        <Route path="ticket/:id" element={<Placeholder titolo="Lavorazione Ticket" />} />
+        <Route index element={<ListaTicketAssegnati />} />
+        <Route path="ticket/:id" element={<LavorazioneTicket />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -108,7 +113,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/toscogas-ticketing">
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

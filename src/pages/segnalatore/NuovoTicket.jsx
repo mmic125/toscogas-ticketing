@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
-  TIPI_INTERVENTO,
+  TIPI_INTERVENTO_COMMERCIALE,
+  TIPI_INTERVENTO_TECNICO,
   PRIORITA_LABEL,
   CATEGORIE,
   PROVINCE,
@@ -74,16 +75,18 @@ export default function NuovoTicket() {
     e.preventDefault()
     setErrore('')
 
-    if (!form.nome_cliente.trim()) { setErrore('Il nome cliente è obbligatorio.'); return }
-    if (!form.tipo_problema)       { setErrore('Seleziona una tipologia di intervento.'); return }
-    if (!form.priorita)            { setErrore('Seleziona una priorità.'); return }
+    if (!form.codice_cliente.trim()) { setErrore('Il codice cliente è obbligatorio.'); return }
+    if (!form.nome_cliente.trim())   { setErrore('Il nome cliente è obbligatorio.'); return }
+    if (!form.categoria)             { setErrore('Seleziona una categoria.'); return }
+    if (!form.tipo_problema)         { setErrore('Seleziona una tipologia di intervento.'); return }
+    if (!form.priorita)              { setErrore('Seleziona una priorità.'); return }
 
     setLoading(true)
     try {
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
-          codice_cliente:      form.codice_cliente || null,
+          codice_cliente:      form.codice_cliente.trim(),
           nome_cliente:        form.nome_cliente.trim(),
           matricola_serbatoio: form.matricola_serbatoio || null,
           tipo_problema:       form.tipo_problema,
@@ -138,12 +141,15 @@ export default function NuovoTicket() {
         {/* Codice e Nome cliente */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Codice Cliente</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Codice Cliente <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="codice_cliente"
               value={form.codice_cliente}
               onChange={handleChange}
+              required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               placeholder="Es. CLI001"
             />
@@ -208,13 +214,15 @@ export default function NuovoTicket() {
 
         {/* Categoria */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Categoria <span className="text-red-500">*</span>
+          </label>
           <div className="flex gap-3">
             {Object.entries(CATEGORIE).map(([val, label]) => (
               <button
                 key={val}
                 type="button"
-                onClick={() => setForm(f => ({ ...f, categoria: val }))}
+                onClick={() => setForm(f => ({ ...f, categoria: val, tipo_problema: '' }))}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
                   form.categoria === val
                     ? 'bg-blue-600 text-white border-blue-600'
@@ -237,10 +245,19 @@ export default function NuovoTicket() {
             value={form.tipo_problema}
             onChange={handleChange}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+            disabled={!form.categoria}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
           >
-            <option value="">Seleziona...</option>
-            {Object.entries(TIPI_INTERVENTO).map(([val, label]) => (
+            <option value="">
+              {form.categoria ? 'Seleziona...' : 'Seleziona prima una categoria'}
+            </option>
+            {Object.entries(
+              form.categoria === 'commerciale'
+                ? TIPI_INTERVENTO_COMMERCIALE
+                : form.categoria === 'tecnico'
+                ? TIPI_INTERVENTO_TECNICO
+                : {}
+            ).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
             ))}
           </select>
@@ -251,6 +268,27 @@ export default function NuovoTicket() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Priorità <span className="text-red-500">*</span>
           </label>
+
+          {/* Legenda priorità */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-3 text-xs text-gray-600 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-600 flex-shrink-0"></span>
+              <span><strong>Urgente</strong> — da gestire entro 48h</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0"></span>
+              <span><strong>Alta</strong> — da gestire entro 72h</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></span>
+              <span><strong>Media</strong> — da gestire entro 1 settimana</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+              <span><strong>Bassa</strong> — da gestire entro 1 mese</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 gap-2">
             {Object.entries(PRIORITA_LABEL).map(([val, label]) => (
               <button

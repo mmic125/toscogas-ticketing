@@ -94,7 +94,7 @@ export default function ConfigUtenti() {
       console.log('Session:', session?.access_token ? 'OK' : 'MANCANTE')
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crea-utente`,
+        `${import.meta.env.VITE_API_URL || ''}/api/profiles/admin/create`,
         {
           method: 'POST',
           headers: {
