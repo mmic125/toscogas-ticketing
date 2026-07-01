@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/api'
 
 const RUOLI_LABEL = {
   coordinatore:            'Coordinatore',
@@ -80,54 +80,71 @@ export default function ConfigUtenti() {
   }
 
   async function handleSubmit(e) {
-  e.preventDefault()
-  setErrore('')
-  setSuccesso('')
-  console.log('Submit avviato, modificando:', modificando)
+    e.preventDefault()
+    setErrore('')
+    setSuccesso('')
 
-  if (modificando) {
-    // ... codice modifica invariato
-  } else {
-    try {
-      console.log('Chiamo Edge Function...')
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('Session:', session?.access_token ? 'OK' : 'MANCANTE')
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || ''}/api/profiles/admin/create`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            email:   form.email.trim(),
-            nome:    form.nome.trim(),
-            cognome: form.cognome.trim(),
-            ruolo:   form.ruolo,
-          }),
+    if (modificando) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || ''}/api/profiles/${modificando.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              nome:    form.nome.trim(),
+              cognome: form.cognome.trim(),
+              ruolo:   form.ruolo,
+            }),
+          }
+        )
+        const result = await response.json()
+        if (!response.ok) {
+          setErrore(`Errore: ${result.error}`)
+          return
         }
-      )
-
-      console.log('Response status:', response.status)
-      const result = await response.json()
-      console.log('Result:', result)
-
-      if (!response.ok) {
-        setErrore(`Errore: ${result.error}`)
-        return
+        setSuccesso(`Utente ${form.nome} ${form.cognome} aggiornato.`)
+        setMostraForm(false)
+        caricaUtenti()
+      } catch (err) {
+        setErrore(`Errore di rete: ${err.message}`)
       }
-
-      setSuccesso(`Utente ${form.nome} ${form.cognome} creato. Password temporanea: Temporanea1!`)
-      setMostraForm(false)
-      caricaUtenti()
-    } catch (err) {
-      console.error('Errore fetch:', err)
-      setErrore(`Errore di rete: ${err.message}`)
+    } else {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || ''}/api/profiles/admin/create`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              email:   form.email.trim(),
+              nome:    form.nome.trim(),
+              cognome: form.cognome.trim(),
+              ruolo:   form.ruolo,
+            }),
+          }
+        )
+        const result = await response.json()
+        if (!response.ok) {
+          setErrore(`Errore: ${result.error}`)
+          return
+        }
+        setSuccesso(`Utente ${form.nome} ${form.cognome} creato. Password temporanea: Temporanea1!`)
+        setMostraForm(false)
+        caricaUtenti()
+      } catch (err) {
+        setErrore(`Errore di rete: ${err.message}`)
+      }
     }
   }
-}
 
   async function toggleAttivo(utente) {
     const { error } = await supabase
@@ -275,6 +292,7 @@ export default function ConfigUtenti() {
               <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-800">{u.nome} {u.cognome}</div>
+                  <div className="text-xs text-gray-400">{u.email}</div>
                 </td>
                 <td className="px-4 py-3">
                   <Badge ruolo={u.ruolo} />
