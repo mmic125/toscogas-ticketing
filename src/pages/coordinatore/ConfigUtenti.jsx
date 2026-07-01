@@ -86,15 +86,14 @@ export default function ConfigUtenti() {
 
     if (modificando) {
       try {
-        const token = localStorage.getItem('access_token')
-        console.log('Token:', token ? 'OK' : 'MANCANTE')
+        const { data: { session } } = await supabase.auth.getSession()
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || ''}/api/profiles/${modificando.id}`,
           {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
               nome:    form.nome.trim(),
@@ -104,7 +103,6 @@ export default function ConfigUtenti() {
           }
         )
         const result = await response.json()
-        console.log('Risultato:', result)
         if (!response.ok) {
           setErrore(`Errore: ${result.error}`)
           return
@@ -113,7 +111,6 @@ export default function ConfigUtenti() {
         setMostraForm(false)
         caricaUtenti()
       } catch (err) {
-        console.error('Errore:', err)
         setErrore(`Errore di rete: ${err.message}`)
       }
     } else {
