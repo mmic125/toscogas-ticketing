@@ -1,23 +1,24 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]             = useState(null)
-  const [profilo, setProfilo]       = useState(null)
-  const [loading, setLoading]       = useState(true)
+  const [user, setUser]                     = useState(null)
+  const [profilo, setProfilo]               = useState(null)
+  const [loading, setLoading]               = useState(true)
   const [profiloLoading, setProfiloLoading] = useState(false)
 
-  async function caricaProfilo(userId) {
+  async function caricaProfilo() {
     setProfiloLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      if (error) throw error
+      const token = localStorage.getItem('access_token')
+      if (!token) { setProfilo(null); return }
+      const r = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!r.ok) throw new Error('Errore caricamento profilo')
+      const data = await r.json()
       setProfilo(data)
     } catch (e) {
       console.error('Errore caricamento profilo:', e)
@@ -27,50 +28,79 @@ export function AuthProvider({ children }) {
     }
   }
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      console.warn('Timeout auth')
-      setLoading(false)
-    }, 8000)
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event, session?.user?.id)
-        clearTimeout(timeout)
-        if (session?.user) {
-          setUser(session.user)
-          setLoading(false)
-          // Carica il profilo in background senza bloccare
-          caricaProfilo(session.user.id)
-        } else {
-          setUser(null)
-          setProfilo(null)
-          setLoading(false)
+  async function initAuth() {
+    const token = localStorage.getItem('access_token')
+    if (!token) { setLoading(false); return }
+    try {
+      const r = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (r.ok) {
+        const data = await r.json()
+        setUser({ id: data.id, email: data.email })
+        setProfilo(data)
+      } else {
+        // Prova refresh
+        const refreshed = await tryRefresh()
+        if (!refreshed) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
         }
       }
-    )
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(timeout)
+    } catch (e) {
+      console.error('initAuth error:', e)
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }
+
+  async function tryRefresh() {
+    const refresh_token = localStorage.getItem('refresh_token')
+    if (!refresh_token) return false
+    try {
+      const r = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token }),
+      })
+      if (!r.ok) return false
+      const { access_token, refresh_token: new_refresh } = await r.json()
+      localStorage.setItem('access_token', access_token)
+      if (new_refresh) localStorage.setItem('refresh_token', new_refresh)
+      await caricaProfilo()
+      return true
+    } catch { return false }
+  }
+
+  useEffect(() => { initAuth() }, [])
 
   async function login(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    const r = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await r.json()
+    if (!r.ok) throw new Error(data.error || 'Login fallito')
+    localStorage.setItem('access_token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    setUser({ id: data.user.id, email: data.user.email })
+    setProfilo(data.user)
     return data
   }
 
   async function logout() {
-    await supabase.auth.signOut()
-  }
-
-  async function resetPassword(email) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/toscogas-ticketing/reset-password`,
-    })
-    if (error) throw error
+    const token = localStorage.getItem('access_token')
+    const refresh_token = localStorage.getItem('refresh_token')
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ refresh_token }),
+    }).catch(() => {})
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    setUser(null)
+    setProfilo(null)
   }
 
   return (
@@ -82,7 +112,7 @@ export function AuthProvider({ children }) {
       profiloLoading,
       login,
       logout,
-      resetPassword,
+      caricaProfilo,
     }}>
       {children}
     </AuthContext.Provider>
