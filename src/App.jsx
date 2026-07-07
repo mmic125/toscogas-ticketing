@@ -4,22 +4,23 @@ import { RUOLI } from './lib/costanti'
 import Layout from './layouts/Layout'
 
 // Auth
-import Login from './pages/auth/Login'
+import Login          from './pages/auth/Login'
+import CambioPassword from './pages/auth/CambioPassword'
 
 // Coordinatore
 import ListaTicket     from './pages/coordinatore/ListaTicket'
 import DettaglioTicket from './pages/coordinatore/DettaglioTicket'
-import Analisi          from './pages/coordinatore/Analisi'
-import ConfigUtenti     from './pages/coordinatore/ConfigUtenti'
-import KanbanBoard      from './pages/coordinatore/KanbanBoard'
+import Analisi         from './pages/coordinatore/Analisi'
+import ConfigUtenti    from './pages/coordinatore/ConfigUtenti'
+import KanbanBoard     from './pages/coordinatore/KanbanBoard'
 
 // Segnalatore
 import NuovoTicket       from './pages/segnalatore/NuovoTicket'
 import ListaTicketAperti from './pages/segnalatore/ListaTicketAperti'
 
 // Manutentore
-import ListaTicketAssegnati  from './pages/manutentore/ListaTicketAssegnati'
-import LavorazioneTicket     from './pages/manutentore/LavorazioneTicket'
+import ListaTicketAssegnati   from './pages/manutentore/ListaTicketAssegnati'
+import LavorazioneTicket      from './pages/manutentore/LavorazioneTicket'
 import KanbanBoardManutentore from './pages/manutentore/KanbanBoard'
 
 function LoadingScreen() {
@@ -35,6 +36,8 @@ function ProtectedRoute({ children, ruoliConsentiti }) {
   if (loading || profiloLoading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!profilo) return <Navigate to="/login" replace />
+  // Se deve cambiare password, reindirizza
+  if (profilo.must_change_pwd) return <Navigate to="/change-password" replace />
   if (ruoliConsentiti && !ruoliConsentiti.includes(profilo.ruolo)) {
     return <Navigate to="/" replace />
   }
@@ -45,6 +48,8 @@ function HomeRedirect() {
   const { profilo, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!profilo) return <Navigate to="/login" replace />
+  // Se deve cambiare password, reindirizza
+  if (profilo.must_change_pwd) return <Navigate to="/change-password" replace />
   switch (profilo.ruolo) {
     case RUOLI.COORDINATORE:            return <Navigate to="/coordinatore" replace />
     case RUOLI.SEGNALATORE:             return <Navigate to="/segnalatore" replace />
@@ -58,6 +63,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/change-password" element={<CambioPassword />} />
       <Route path="/" element={<HomeRedirect />} />
 
       {/* Coordinatore */}

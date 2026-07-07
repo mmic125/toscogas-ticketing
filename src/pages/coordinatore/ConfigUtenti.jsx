@@ -86,14 +86,14 @@ export default function ConfigUtenti() {
 
     if (modificando) {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const token = localStorage.getItem('access_token')
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || ''}/api/profiles/${modificando.id}`,
           {
             method: 'PATCH',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
               nome:    form.nome.trim(),
@@ -115,14 +115,14 @@ export default function ConfigUtenti() {
       }
     } else {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const token = localStorage.getItem('access_token')
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || ''}/api/profiles/admin/create`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
               email:   form.email.trim(),
@@ -147,15 +147,52 @@ export default function ConfigUtenti() {
   }
 
   async function toggleAttivo(utente) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ attivo: !utente.attivo })
-      .eq('id', utente.id)
-
-    if (error) {
+    const token = localStorage.getItem('access_token')
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || ''}/api/profiles/${utente.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ attivo: !utente.attivo }),
+      }
+    )
+    if (!response.ok) {
       setErrore('Errore nell\'aggiornamento utente.')
     } else {
       caricaUtenti()
+    }
+  }
+
+  async function resetPassword(utente) {
+    if (!window.confirm(`Resettare la password di ${utente.nome} ${utente.cognome}? Verrà reimpostata a "Temporanea1!" e l'utente dovrà cambiarla al prossimo accesso.`)) return
+
+    setErrore('')
+    setSuccesso('')
+
+    try {
+      const token = localStorage.getItem('access_token')
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || ''}/api/profiles/admin/reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: utente.id }),
+        }
+      )
+      const result = await response.json()
+      if (!response.ok) {
+        setErrore(`Errore: ${result.error}`)
+        return
+      }
+      setSuccesso(`Password di ${utente.nome} ${utente.cognome} reimpostata a "Temporanea1!".`)
+    } catch (err) {
+      setErrore(`Errore di rete: ${err.message}`)
     }
   }
 
@@ -305,12 +342,18 @@ export default function ConfigUtenti() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => apriFormModifica(u)}
                       className="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-50 transition"
                     >
                       Modifica
+                    </button>
+                    <button
+                      onClick={() => resetPassword(u)}
+                      className="text-xs border border-yellow-300 text-yellow-700 px-3 py-1 rounded-lg hover:bg-yellow-50 transition"
+                    >
+                      Reset password
                     </button>
                     <button
                       onClick={() => toggleAttivo(u)}
