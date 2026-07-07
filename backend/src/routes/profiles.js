@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       const raw = req.query.ruolo
       if (raw.startsWith('in.')) {
         const items = raw.slice(3).split(',').filter(Boolean)
-        conditions.push(`ruolo = ANY($${idx++}::text[])`)
+        conditions.push(`ruolo = ANY($${idx++}::ruolo_utente[])`)
         values.push(items)
       } else if (raw.startsWith('eq.')) {
         conditions.push(`ruolo = $${idx++}`)
