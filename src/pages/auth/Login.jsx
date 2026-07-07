@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { supabase } from '../../lib/supabase'
 
 export default function Login() {
-  const { login, resetPassword } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
 
   const [email, setEmail]           = useState('')
@@ -12,58 +11,30 @@ export default function Login() {
   const [errore, setErrore]         = useState('')
   const [loading, setLoading]       = useState(false)
   const [modalReset, setModalReset] = useState(false)
-  const [emailReset, setEmailReset] = useState('')
-  const [resetOk, setResetOk]       = useState(false)
 
-async function handleLogin(e) {
-  e.preventDefault()
-  setErrore('')
-  setLoading(true)
-  try {
-    console.log('1. Inizio login...')
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    console.log('2. Risposta Supabase:', data, error)
-
-    if (error) throw error
-
-    const { data: p, error: errProfilo } = await supabase
-      .from('profiles')
-      .select('ruolo')
-      .eq('id', data.user.id)
-      .single()
-
-    console.log('3. Profilo:', p, errProfilo)
-
-    if (errProfilo || !p) throw new Error('Profilo non trovato')
-
-    switch (p.ruolo) {
-      case 'coordinatore':            navigate('/coordinatore'); break
-      case 'segnalatore':             navigate('/segnalatore'); break
-      case 'manutentore':             navigate('/manutentore'); break
-      case 'segnalatore_manutentore': navigate('/segnalatore'); break
-      default: navigate('/')
-    }
-  } catch (err) {
-    console.log('ERRORE:', err.message)
-    setErrore('Email o password non validi.')
-    setLoading(false)
-  }
-}
-
-  async function handleReset(e) {
+  async function handleLogin(e) {
     e.preventDefault()
+    setErrore('')
     setLoading(true)
     try {
-      await resetPassword(emailReset)
-      setResetOk(true)
-    } catch {
-      setErrore('Errore nell\'invio della mail di reset.')
-    } finally {
+      const data = await login(email, password)
+      const profilo = data.user
+
+      // Controlla se deve cambiare password
+      if (profilo.must_change_pwd) {
+        navigate('/change-password', { replace: true })
+        return
+      }
+
+      switch (profilo.ruolo) {
+        case 'coordinatore':            navigate('/coordinatore', { replace: true }); break
+        case 'segnalatore':             navigate('/segnalatore',  { replace: true }); break
+        case 'manutentore':             navigate('/manutentore',  { replace: true }); break
+        case 'segnalatore_manutentore': navigate('/segnalatore',  { replace: true }); break
+        default: navigate('/', { replace: true })
+      }
+    } catch (err) {
+      setErrore(err.message || 'Email o password non validi.')
       setLoading(false)
     }
   }
@@ -137,48 +108,19 @@ async function handleLogin(e) {
           </form>
 
         ) : (
-          <form onSubmit={handleReset} className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-800">Reset password</h2>
-
-            {!resetOk ? (
-              <>
-                <p className="text-sm text-gray-500">
-                  Inserisci la tua email: ti invieremo un link per reimpostare la password.
-                </p>
-                <input
-                  type="email"
-                  required
-                  value={emailReset}
-                  onChange={e => setEmailReset(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="nome@toscogas.it"
-                />
-                {errore && (
-                  <p className="text-sm text-red-600">{errore}</p>
-                )}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{ backgroundColor: loading ? '#e57373' : '#C8181E' }}
-                  className="w-full text-white font-medium py-2 rounded-lg text-sm transition"
-                >
-                  {loading ? 'Invio...' : 'Invia link reset'}
-                </button>
-              </>
-            ) : (
-              <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
-                Email inviata! Controlla la tua casella di posta.
-              </p>
-            )}
-
+          <div className="space-y-4">
+            <h2 className="text-lg font-medium text-gray-800">Password dimenticata?</h2>
+            <p className="text-sm text-gray-500">
+              Contatta il coordinatore per richiedere il reset della password.
+            </p>
             <button
               type="button"
-              onClick={() => { setModalReset(false); setResetOk(false); setErrore('') }}
+              onClick={() => { setModalReset(false); setErrore('') }}
               className="text-sm text-gray-500 hover:underline"
             >
               ← Torna al login
             </button>
-          </form>
+          </div>
         )}
       </div>
     </div>
