@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -18,6 +18,10 @@ function Badge({ testo, colori }) {
 export default function ListaTicketAssegnati() {
   const { profilo } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  // Questo componente è montato sia su /manutentore che su /segnalatore/assegnati:
+  // il link al dettaglio deve restare sotto la base da cui si è navigato.
+  const basePath = pathname.replace(/\/$/, '')
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [errore, setErrore]   = useState('')
@@ -149,7 +153,7 @@ export default function ListaTicketAssegnati() {
               ) : (
                 ticketsFiltrati.map(t => (
                   <tr key={t.id}
-                    onClick={() => navigate(`/manutentore/ticket/${t.id}`)}
+                    onClick={() => navigate(`${basePath}/ticket/${t.id}`)}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition"
                   >
                     <td className="px-4 py-3">
