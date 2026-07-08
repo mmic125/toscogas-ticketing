@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import {
   TIPI_INTERVENTO, PRIORITA_LABEL, STATI_LABEL,
-  PRIORITA_COLORS, STATO_COLORS, CATEGORIE,
+  PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE,
   MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI
 } from '../../lib/costanti'
 
@@ -26,10 +26,16 @@ export default function RisoluzioneTicket() {
   const [errore, setErrore]     = useState('')
   const [successo, setSuccesso] = useState('')
 
-  const [nuoviAllegati, setNuoviAllegati] = useState([])
-  const [previewNuovi, setPreviewNuovi]   = useState([])
+  // Nuovi allegati da caricare
+  const [nuoviAllegati, setNuoviAllegati]   = useState([])
+  const [previewNuovi, setPreviewNuovi]     = useState([])
 
   const [form, setForm] = useState({
+    codice_cliente:       '',
+    nome_cliente:         '',
+    telefono:             '',
+    provincia:            '',
+    matricola_serbatoio:  '',
     note_intervento:      '',
     materiale_utilizzato: '',
   })
@@ -40,11 +46,7 @@ export default function RisoluzioneTicket() {
     setLoading(true)
     const { data: t, error } = await supabase
       .from('tickets')
-      .select(`
-        *,
-        segnalatore:profiles!tickets_segnalatore_id_fkey(nome, cognome),
-        manutentore:profiles!tickets_manutentore_id_fkey(nome, cognome)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
@@ -56,10 +58,16 @@ export default function RisoluzioneTicket() {
 
     setTicket(t)
     setForm({
+      codice_cliente:       t.codice_cliente || '',
+      nome_cliente:         t.nome_cliente || '',
+      telefono:             t.telefono || '',
+      provincia:            t.provincia || '',
+      matricola_serbatoio:  t.matricola_serbatoio || '',
       note_intervento:      t.note_intervento || '',
       materiale_utilizzato: t.materiale_utilizzato || '',
     })
 
+    // Carica allegati esistenti
     const { data: f } = await supabase
       .from('ticket_foto')
       .select('*')
@@ -81,8 +89,7 @@ export default function RisoluzioneTicket() {
   }
 
   function handleChange(e) {
-    const { name, type, checked, value } = e.target
-    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
   function handleNuoviAllegati(e) {
@@ -119,82 +126,76 @@ export default function RisoluzioneTicket() {
     setPreviewNuovi(prev => prev.filter((_, i) => i !== index))
   }
 
-  const materialeSenzaFlag = !!form.materiale_utilizzato.trim() && !ticket?.materiale_scaricato
+  const codiceModificabile    = !ticket?.codice_cliente
+  const nomeModificabile      = !ticket?.nome_cliente
+  const telefonoModificabile  = !ticket?.telefono
+  const provinciaModificabile = !ticket?.provincia
+  const matricolaModificabile = !ticket?.matricola_serbatoio
 
-  async function caricaNuoviAllegati() {
-    if (nuoviAllegati.length === 0) return
-    const ordineBase = allegati.length + 1
-    for (let i = 0; i < nuoviAllegati.length; i++) {
-      const file = nuoviAllegati[i]
-      const ext  = file.name.split('.').pop()
-      const path = `${id}/${ordineBase + i}.${ext}`
+  async function salvaEAggiorna(nuovoStato) {
+    setSaving(true); setErrore(''); setSuccesso('')
 
-      const { error: uploadError } = await supabase.storage
-        .from('ticket-foto')
-        .upload(path, file)
+    const aggiornamenti = {
+      note_intervento:      form.note_intervento || null,
+      materiale_utilizzato: form.materiale_utilizzato || null,
+    }
 
-      if (!uploadError) {
-        await supabase.from('ticket_foto').insert({
-          ticket_id:    id,
-          storage_path: path,
-          ordine:       ordineBase + i,
-        })
+    if (codiceModificabile)    aggiornamenti.codice_cliente      = form.codice_cliente || null
+    if (nomeModificabile)      aggiornamenti.nome_cliente        = form.nome_cliente || null
+    if (telefonoModificabile)  aggiornamenti.telefono            = form.telefono || null
+    if (provinciaModificabile) aggiornamenti.provincia           = form.provincia || null
+    if (matricolaModificabile) aggiornamenti.matricola_serbatoio = form.matricola_serbatoio || null
+
+    if (nuovoStato === 'risolto') {
+      aggiornamenti.stato           = 'risolto'
+      aggiornamenti.data_intervento = new Date().toISOString().split('T')[0]
+    } else if (nuovoStato === 'in_lavorazione') {
+      aggiornamenti.stato = 'in_lavorazione'
+    }
+
+    const { error } = await supabase
+      .from('tickets')
+      .update(aggiornamenti)
+      .eq('id', id)
+
+    if (error) {
+      setErrore('Errore nel salvataggio.')
+      setSaving(false)
+      return
+    }
+
+    // Carica nuovi allegati
+    if (nuoviAllegati.length > 0) {
+      const ordineBase = allegati.length + 1
+      for (let i = 0; i < nuoviAllegati.length; i++) {
+        const file = nuoviAllegati[i]
+        const ext  = file.name.split('.').pop()
+        const path = `${id}/${ordineBase + i}.${ext}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('ticket-foto')
+          .upload(path, file)
+
+        if (!uploadError) {
+          await supabase.from('ticket_foto').insert({
+            ticket_id:    id,
+            storage_path: path,
+            ordine:       ordineBase + i,
+          })
+        }
       }
     }
-  }
 
-  async function chiusuraParziale() {
-    setSaving(true); setErrore(''); setSuccesso('')
-
-    const { error } = await supabase
-      .from('tickets')
-      .update({
-        note_intervento:      form.note_intervento || null,
-        materiale_utilizzato: form.materiale_utilizzato || null,
-      })
-      .eq('id', id)
-
-    if (error) {
-      setErrore(error.message || 'Errore nel salvataggio.')
-      setSaving(false)
-      return
+    if (nuovoStato === 'risolto') {
+      setSuccesso('Risoluzione completata. Ticket impostato come Risolto.')
+      setTimeout(() => navigate(`/coordinatore/ticket/${id}`), 1500)
+    } else {
+      setSuccesso('Risoluzione parziale salvata.')
+      setNuoviAllegati([])
+      setPreviewNuovi([])
+      caricaDati()
     }
-
-    await caricaNuoviAllegati()
-    setSuccesso('Chiusura parziale salvata.')
-    setNuoviAllegati([])
-    setPreviewNuovi([])
-    caricaDati()
     setSaving(false)
-  }
-
-  async function chiusuraTotale() {
-    if (materialeSenzaFlag) {
-      setErrore('È stato indicato del materiale utilizzato: conferma il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket prima di chiudere definitivamente.')
-      return
-    }
-    if (!window.confirm('Sei sicuro di voler chiudere definitivamente questo ticket? L\'operazione è irreversibile.')) return
-
-    setSaving(true); setErrore(''); setSuccesso('')
-
-    const { error } = await supabase
-      .from('tickets')
-      .update({
-        note_intervento:      form.note_intervento || null,
-        materiale_utilizzato: form.materiale_utilizzato || null,
-        stato:                'chiuso',
-      })
-      .eq('id', id)
-
-    if (error) {
-      setErrore(error.message || 'Errore nella chiusura del ticket.')
-      setSaving(false)
-      return
-    }
-
-    await caricaNuoviAllegati()
-    setSuccesso('Chiusura totale completata.')
-    setTimeout(() => navigate(`/coordinatore/ticket/${id}`), 1200)
   }
 
   if (loading) return (
@@ -209,7 +210,7 @@ export default function RisoluzioneTicket() {
     </div>
   )
 
-  const chiuso = ticket.stato === 'chiuso'
+  const chiuso = ticket.stato === 'chiuso' || ticket.stato === 'risolto'
   const allegatiRimasti = MAX_FOTO - allegati.length - nuoviAllegati.length
 
   return (
@@ -221,13 +222,10 @@ export default function RisoluzioneTicket() {
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-gray-800">Risoluzione — {ticket.nome_cliente}</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">{ticket.nome_cliente}</h1>
           <div className="flex items-center gap-2 mt-1">
             <Badge testo={STATI_LABEL[ticket.stato]} colori={STATO_COLORS[ticket.stato]} />
             <Badge testo={PRIORITA_LABEL[ticket.priorita]} colori={PRIORITA_COLORS[ticket.priorita]} />
-            {ticket.categoria && (
-              <Badge testo={CATEGORIE[ticket.categoria] || ticket.categoria} colori="bg-blue-100 text-blue-800" />
-            )}
           </div>
         </div>
       </div>
@@ -236,6 +234,53 @@ export default function RisoluzioneTicket() {
       {successo && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2 mb-4">{successo}</p>}
 
       <div className="space-y-4">
+
+        {/* Dati cliente */}
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Dati Cliente</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Codice Cliente</label>
+              <input type="text" name="codice_cliente" value={form.codice_cliente} onChange={handleChange}
+                disabled={!codiceModificabile || chiuso}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Nome Cliente</label>
+              <input type="text" name="nome_cliente" value={form.nome_cliente} onChange={handleChange}
+                disabled={!nomeModificabile || chiuso}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Telefono</label>
+              <input type="tel" name="telefono" value={form.telefono} onChange={handleChange}
+                disabled={!telefonoModificabile || chiuso}
+                placeholder="—"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Provincia</label>
+              {provinciaModificabile && !chiuso ? (
+                <select name="provincia" value={form.provincia} onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                  <option value="">Seleziona...</option>
+                  {Object.entries(PROVINCE).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type="text" value={form.provincia || '—'} disabled
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400" />
+              )}
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Matricola Serbatoio</label>
+              <input type="text" name="matricola_serbatoio" value={form.matricola_serbatoio} onChange={handleChange}
+                disabled={!matricolaModificabile || chiuso}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
+            </div>
+          </div>
+        </div>
 
         {/* Info problema - sola lettura */}
         <div className="bg-white rounded-xl shadow-sm p-5">
@@ -250,14 +295,12 @@ export default function RisoluzioneTicket() {
               <p className="text-gray-800">{TIPI_INTERVENTO[ticket.tipo_problema] || ticket.tipo_problema}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Assegnatario</p>
-              <p className="text-gray-800">
-                {ticket.manutentore ? `${ticket.manutentore.nome} ${ticket.manutentore.cognome}` : '—'}
-              </p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Priorità</p>
+              <Badge testo={PRIORITA_LABEL[ticket.priorita]} colori={PRIORITA_COLORS[ticket.priorita]} />
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Data Intervento</p>
-              <p className="text-gray-800">{ticket.data_intervento || '—'}</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Intervento Richiesto</p>
+              <p className="text-gray-800">{ticket.data_intervento_richiesta || '—'}</p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">
@@ -312,19 +355,6 @@ export default function RisoluzioneTicket() {
                 placeholder="Elenca i materiali utilizzati..." />
             </div>
 
-            <p className="text-xs text-gray-500">
-              Materiale scaricato dal magazzino:{' '}
-              <span className={ticket.materiale_scaricato ? 'text-green-700 font-medium' : 'text-gray-400'}>
-                {ticket.materiale_scaricato ? 'Sì' : 'No'}
-              </span>
-              {' '}— il flag si imposta nella pagina Dettaglio Ticket.
-            </p>
-            {materialeSenzaFlag && !chiuso && (
-              <p className="text-xs text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2">
-                È stato indicato del materiale utilizzato: per la chiusura totale conferma prima il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket.
-              </p>
-            )}
-
             {/* Carica nuovi allegati */}
             {!chiuso && (
               <div>
@@ -378,22 +408,21 @@ export default function RisoluzioneTicket() {
         {/* Pulsanti */}
         {!chiuso && (
           <div className="flex gap-3">
-            <button onClick={chiusuraParziale} disabled={saving}
+            <button onClick={() => salvaEAggiorna('in_lavorazione')} disabled={saving}
               className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
-              {saving ? 'Salvataggio...' : 'Chiusura Parziale'}
+              {saving ? 'Salvataggio...' : 'Risoluzione Parziale'}
             </button>
-            <button onClick={chiusuraTotale} disabled={saving || materialeSenzaFlag}
+            <button onClick={() => salvaEAggiorna('risolto')} disabled={saving}
               style={{ backgroundColor: '#C8181E' }}
-              title={materialeSenzaFlag ? 'Conferma il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket prima di chiudere' : undefined}
               className="flex-1 text-white py-3 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-50">
-              {saving ? 'Salvataggio...' : 'Chiusura Totale'}
+              {saving ? 'Salvataggio...' : 'Risoluzione Totale'}
             </button>
           </div>
         )}
 
         {chiuso && (
           <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
-            Questo ticket è stato chiuso e non può essere modificato.
+            Questo ticket è stato {STATI_LABEL[ticket.stato]?.toLowerCase()} e non può essere modificato da questa schermata.
           </div>
         )}
       </div>

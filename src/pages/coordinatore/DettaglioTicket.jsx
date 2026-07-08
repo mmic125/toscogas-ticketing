@@ -173,6 +173,28 @@ export default function DettaglioTicket() {
     setSaving(false)
   }
 
+  async function chiudi() {
+    if (form.materiale_utilizzato?.trim() && !form.materiale_scaricato) {
+      setErrore('Impossibile chiudere il ticket: è stato indicato del materiale utilizzato ma non risulta scaricato dal magazzino.')
+      return
+    }
+    if (!window.confirm('Sei sicuro di voler chiudere questo ticket? L\'operazione è irreversibile.')) return
+
+    setSaving(true); setErrore('')
+    const { error } = await supabase
+      .from('tickets')
+      .update({
+        materiale_utilizzato: form.materiale_utilizzato || null,
+        materiale_scaricato:  form.materiale_scaricato,
+        stato:                'chiuso',
+      })
+      .eq('id', id)
+
+    if (error) { setErrore(error.message || 'Errore nella chiusura del ticket.') }
+    else { setSuccesso('Ticket chiuso.'); caricaDati() }
+    setSaving(false)
+  }
+
   const chiuso = ticket?.stato === 'chiuso'
   const oggi   = new Date().toISOString().split('T')[0]
 
@@ -216,9 +238,13 @@ export default function DettaglioTicket() {
               Assegna Ticket
             </button>
             <button onClick={() => navigate(`/coordinatore/ticket/${id}/risoluzione`)}
-              style={{ backgroundColor: '#C8181E' }}
-              className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
               Risoluzione
+            </button>
+            <button onClick={chiudi} disabled={saving}
+              style={{ backgroundColor: '#C8181E' }}
+              className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+              Chiudi Ticket
             </button>
           </div>
         )}
