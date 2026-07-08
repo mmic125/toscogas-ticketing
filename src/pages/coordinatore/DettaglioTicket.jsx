@@ -47,6 +47,7 @@ export default function DettaglioTicket() {
     note_apertura:             '',
     note_intervento:           '',
     materiale_utilizzato:      '',
+    materiale_scaricato:       false,
     manutentore_id:            '',
     data_intervento_richiesta: '',
     stato:                     '',
@@ -81,6 +82,7 @@ export default function DettaglioTicket() {
       note_apertura:             t.note_apertura || '',
       note_intervento:           t.note_intervento || '',
       materiale_utilizzato:      t.materiale_utilizzato || '',
+      materiale_scaricato:       !!t.materiale_scaricato,
       manutentore_id:            t.manutentore_id || '',
       data_intervento_richiesta: t.data_intervento_richiesta || '',
       stato:                     t.stato || '',
@@ -114,7 +116,8 @@ export default function DettaglioTicket() {
   }
 
   function handleChange(e) {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, type, checked, value } = e.target
+    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
   }
 
   async function salva() {
@@ -133,6 +136,7 @@ export default function DettaglioTicket() {
         note_apertura:             form.note_apertura || null,
         note_intervento:           form.note_intervento || null,
         materiale_utilizzato:      form.materiale_utilizzato || null,
+        materiale_scaricato:       form.materiale_scaricato,
         manutentore_id:            form.manutentore_id || null,
         data_intervento_richiesta: form.data_intervento_richiesta || null,
       })
@@ -312,6 +316,17 @@ export default function DettaglioTicket() {
                 <textarea name="materiale_utilizzato" value={form.materiale_utilizzato} onChange={handleChange} disabled={chiuso} rows={2}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
+              <label className={`flex items-center gap-2 text-sm ${chiuso ? 'text-gray-400' : 'text-gray-700'}`}>
+                <input
+                  type="checkbox"
+                  name="materiale_scaricato"
+                  checked={form.materiale_scaricato}
+                  onChange={handleChange}
+                  disabled={chiuso}
+                  className="accent-red-600 w-4 h-4"
+                />
+                Materiale scaricato dal magazzino
+              </label>
             </div>
           </div>
 

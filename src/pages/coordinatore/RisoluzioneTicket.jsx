@@ -32,7 +32,6 @@ export default function RisoluzioneTicket() {
   const [form, setForm] = useState({
     note_intervento:      '',
     materiale_utilizzato: '',
-    materiale_scaricato:  false,
   })
 
   useEffect(() => { caricaDati() }, [id])
@@ -59,7 +58,6 @@ export default function RisoluzioneTicket() {
     setForm({
       note_intervento:      t.note_intervento || '',
       materiale_utilizzato: t.materiale_utilizzato || '',
-      materiale_scaricato:  !!t.materiale_scaricato,
     })
 
     const { data: f } = await supabase
@@ -121,7 +119,7 @@ export default function RisoluzioneTicket() {
     setPreviewNuovi(prev => prev.filter((_, i) => i !== index))
   }
 
-  const materialeSenzaFlag = !!form.materiale_utilizzato.trim() && !form.materiale_scaricato
+  const materialeSenzaFlag = !!form.materiale_utilizzato.trim() && !ticket?.materiale_scaricato
 
   async function caricaNuoviAllegati() {
     if (nuoviAllegati.length === 0) return
@@ -145,7 +143,7 @@ export default function RisoluzioneTicket() {
     }
   }
 
-  async function salva() {
+  async function chiusuraParziale() {
     setSaving(true); setErrore(''); setSuccesso('')
 
     const { error } = await supabase
@@ -153,7 +151,6 @@ export default function RisoluzioneTicket() {
       .update({
         note_intervento:      form.note_intervento || null,
         materiale_utilizzato: form.materiale_utilizzato || null,
-        materiale_scaricato:  form.materiale_scaricato,
       })
       .eq('id', id)
 
@@ -164,16 +161,16 @@ export default function RisoluzioneTicket() {
     }
 
     await caricaNuoviAllegati()
-    setSuccesso('Modifiche salvate.')
+    setSuccesso('Chiusura parziale salvata.')
     setNuoviAllegati([])
     setPreviewNuovi([])
     caricaDati()
     setSaving(false)
   }
 
-  async function chiudiTicket() {
+  async function chiusuraTotale() {
     if (materialeSenzaFlag) {
-      setErrore('È stato indicato del materiale utilizzato: conferma il flag "Materiale scaricato" prima di chiudere il ticket.')
+      setErrore('È stato indicato del materiale utilizzato: conferma il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket prima di chiudere definitivamente.')
       return
     }
     if (!window.confirm('Sei sicuro di voler chiudere definitivamente questo ticket? L\'operazione è irreversibile.')) return
@@ -185,7 +182,6 @@ export default function RisoluzioneTicket() {
       .update({
         note_intervento:      form.note_intervento || null,
         materiale_utilizzato: form.materiale_utilizzato || null,
-        materiale_scaricato:  form.materiale_scaricato,
         stato:                'chiuso',
       })
       .eq('id', id)
@@ -197,7 +193,7 @@ export default function RisoluzioneTicket() {
     }
 
     await caricaNuoviAllegati()
-    setSuccesso('Ticket chiuso definitivamente.')
+    setSuccesso('Chiusura totale completata.')
     setTimeout(() => navigate(`/coordinatore/ticket/${id}`), 1200)
   }
 
@@ -316,20 +312,16 @@ export default function RisoluzioneTicket() {
                 placeholder="Elenca i materiali utilizzati..." />
             </div>
 
-            <label className={`flex items-center gap-2 text-sm ${chiuso ? 'text-gray-400' : 'text-gray-700'}`}>
-              <input
-                type="checkbox"
-                name="materiale_scaricato"
-                checked={form.materiale_scaricato}
-                onChange={handleChange}
-                disabled={chiuso}
-                className="accent-red-600 w-4 h-4"
-              />
-              Materiale scaricato dal magazzino
-            </label>
+            <p className="text-xs text-gray-500">
+              Materiale scaricato dal magazzino:{' '}
+              <span className={ticket.materiale_scaricato ? 'text-green-700 font-medium' : 'text-gray-400'}>
+                {ticket.materiale_scaricato ? 'Sì' : 'No'}
+              </span>
+              {' '}— il flag si imposta nella pagina Dettaglio Ticket.
+            </p>
             {materialeSenzaFlag && !chiuso && (
               <p className="text-xs text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2">
-                È stato indicato del materiale utilizzato: per chiudere definitivamente il ticket conferma prima il flag "Materiale scaricato".
+                È stato indicato del materiale utilizzato: per la chiusura totale conferma prima il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket.
               </p>
             )}
 
@@ -386,15 +378,15 @@ export default function RisoluzioneTicket() {
         {/* Pulsanti */}
         {!chiuso && (
           <div className="flex gap-3">
-            <button onClick={salva} disabled={saving}
+            <button onClick={chiusuraParziale} disabled={saving}
               className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
-              {saving ? 'Salvataggio...' : 'Salva'}
+              {saving ? 'Salvataggio...' : 'Chiusura Parziale'}
             </button>
-            <button onClick={chiudiTicket} disabled={saving || materialeSenzaFlag}
+            <button onClick={chiusuraTotale} disabled={saving || materialeSenzaFlag}
               style={{ backgroundColor: '#C8181E' }}
-              title={materialeSenzaFlag ? 'Conferma il flag "Materiale scaricato" prima di chiudere' : undefined}
+              title={materialeSenzaFlag ? 'Conferma il flag "Materiale scaricato dal magazzino" nel Dettaglio Ticket prima di chiudere' : undefined}
               className="flex-1 text-white py-3 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-50">
-              {saving ? 'Salvataggio...' : 'Chiudi Ticket'}
+              {saving ? 'Salvataggio...' : 'Chiusura Totale'}
             </button>
           </div>
         )}
