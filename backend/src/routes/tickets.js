@@ -176,7 +176,7 @@ router.patch('/:id', async (req, res) => {
     const COORD_FIELDS = [
       'codice_cliente', 'nome_cliente', 'matricola_serbatoio', 'tipo_problema',
       'priorita', 'categoria', 'provincia', 'telefono', 'note_apertura',
-      'note_intervento', 'materiale_utilizzato', 'manutentore_id',
+      'note_intervento', 'materiale_utilizzato', 'materiale_scaricato', 'manutentore_id',
       'data_intervento_richiesta', 'stato',
     ]
     const MAN_FIELDS = [
@@ -198,6 +198,28 @@ router.patch('/:id', async (req, res) => {
     }
 
     if (!updates.length) return res.status(400).json({ error: 'Nessun campo da aggiornare' })
+
+    // Un ticket non può essere chiuso definitivamente se è stato usato del
+    // materiale ma non è stato flaggato come scaricato dal magazzino.
+    const nuovoStato = 'stato' in req.body ? req.body.stato : ticket.stato
+    if (nuovoStato === 'chiuso') {
+      const current = await db.query(
+        'SELECT materiale_utilizzato, materiale_scaricato FROM tickets WHERE id = $1',
+        [req.params.id]
+      )
+      const materialeUtilizzato = 'materiale_utilizzato' in req.body
+        ? req.body.materiale_utilizzato
+        : current.rows[0].materiale_utilizzato
+      const materialeScaricato = 'materiale_scaricato' in req.body
+        ? req.body.materiale_scaricato
+        : current.rows[0].materiale_scaricato
+
+      if (materialeUtilizzato && materialeUtilizzato.trim() && !materialeScaricato) {
+        return res.status(400).json({
+          error: 'Impossibile chiudere il ticket: è stato indicato del materiale utilizzato ma non risulta scaricato dal magazzino.',
+        })
+      }
+    }
 
     values.push(req.params.id)
     const { rows } = await db.query(

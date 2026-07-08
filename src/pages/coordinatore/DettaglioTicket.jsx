@@ -169,19 +169,6 @@ export default function DettaglioTicket() {
     setSaving(false)
   }
 
-  async function chiudi() {
-    if (!window.confirm('Sei sicuro di voler chiudere questo ticket? L\'operazione è irreversibile.')) return
-    setSaving(true); setErrore('')
-    const { error } = await supabase
-      .from('tickets')
-      .update({ stato: 'chiuso' })
-      .eq('id', id)
-
-    if (error) { setErrore('Errore nella chiusura del ticket.') }
-    else { setSuccesso('Ticket chiuso.'); caricaDati() }
-    setSaving(false)
-  }
-
   const chiuso = ticket?.stato === 'chiuso'
   const oggi   = new Date().toISOString().split('T')[0]
 
@@ -224,9 +211,10 @@ export default function DettaglioTicket() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
               Assegna Ticket
             </button>
-            <button onClick={chiudi} disabled={saving}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
-              Chiudi Ticket
+            <button onClick={() => navigate(`/coordinatore/ticket/${id}/risoluzione`)}
+              style={{ backgroundColor: '#C8181E' }}
+              className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+              Risoluzione
             </button>
           </div>
         )}

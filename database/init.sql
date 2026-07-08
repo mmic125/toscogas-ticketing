@@ -74,6 +74,7 @@ CREATE TABLE tickets (
   note_apertura             TEXT,
   note_intervento           TEXT,
   materiale_utilizzato      TEXT,
+  materiale_scaricato       BOOLEAN NOT NULL DEFAULT false,
   priorita                  priorita_ticket NOT NULL,
   categoria                 categoria_ticket,
   provincia                 TEXT,

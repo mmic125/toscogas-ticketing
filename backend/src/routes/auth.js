@@ -207,8 +207,8 @@ router.post('/logout', authenticate, async (req, res) => {
 
 // ─── POST /auth/change-password ──────────────────────────────
 router.post('/change-password', authenticate, async (req, res) => {
-  const { current_password, new_password } = req.body || {}
-  if (!current_password || !new_password) {
+  const { new_password } = req.body || {}
+  if (!new_password) {
     return res.status(400).json({ error: 'Parametri mancanti' })
   }
   if (new_password.length < 12) {
@@ -216,10 +216,6 @@ router.post('/change-password', authenticate, async (req, res) => {
   }
 
   try {
-    const { rows } = await db.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id])
-    const valid = await argon2.verify(rows[0].password_hash, current_password, ARGON2_OPTIONS)
-    if (!valid) return res.status(401).json({ error: 'Password attuale non corretta' })
-
     const hash = await argon2.hash(new_password, ARGON2_OPTIONS)
     await db.query(
       `UPDATE users SET password_hash = $1, must_change_pwd = false WHERE id = $2`,

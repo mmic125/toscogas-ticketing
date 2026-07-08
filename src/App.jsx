@@ -10,6 +10,7 @@ import CambioPassword from './pages/auth/CambioPassword'
 // Coordinatore
 import ListaTicket     from './pages/coordinatore/ListaTicket'
 import DettaglioTicket from './pages/coordinatore/DettaglioTicket'
+import RisoluzioneTicket from './pages/coordinatore/RisoluzioneTicket'
 import Analisi         from './pages/coordinatore/Analisi'
 import ConfigUtenti    from './pages/coordinatore/ConfigUtenti'
 import KanbanBoard     from './pages/coordinatore/KanbanBoard'
@@ -75,6 +76,7 @@ function AppRoutes() {
         <Route index element={<ListaTicket />} />
         <Route path="kanban" element={<KanbanBoard />} />
         <Route path="ticket/:id" element={<DettaglioTicket />} />
+        <Route path="ticket/:id/risoluzione" element={<RisoluzioneTicket />} />
         <Route path="analisi" element={<Analisi />} />
         <Route path="utenti" element={<ConfigUtenti />} />
         <Route path="nuovo" element={<NuovoTicket />} />
