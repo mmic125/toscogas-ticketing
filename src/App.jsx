@@ -6,6 +6,7 @@ import Layout from './layouts/Layout'
 // Auth
 import Login          from './pages/auth/Login'
 import CambioPassword from './pages/auth/CambioPassword'
+import AttivaMFA      from './pages/auth/AttivaMFA'
 
 // Coordinatore
 import ListaTicket     from './pages/coordinatore/ListaTicket'
@@ -65,7 +66,16 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/change-password" element={<CambioPassword />} />
+            {/* MFA — accessibile a tutti gli utenti autenticati */}
+      <Route path="/mfa" element={
+        <ProtectedRoute>
+          <Layout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<AttivaMFA />} />
+      </Route>
       <Route path="/" element={<HomeRedirect />} />
+
 
       {/* Coordinatore */}
       <Route path="/coordinatore" element={

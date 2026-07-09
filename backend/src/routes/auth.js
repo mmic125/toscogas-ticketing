@@ -6,7 +6,9 @@ const fs        = require('fs')
 const nodemailer = require('nodemailer')
 const db        = require('../db')
 const { audit, logger } = require('../logger')
-const { authenticate } = require('../middleware/authenticate')
+const { authenticate }  = require('../middleware/authenticate')
+const { authenticator } = require('otplib')
+const QRCode            = require('qrcode')
 
 const router = express.Router()
 
@@ -66,8 +68,8 @@ router.post('/login', async (req, res) => {
 
   try {
     const { rows } = await db.query(
-      `SELECT u.id, u.email, u.password_hash, u.failed_attempts, u.locked_until, u.must_change_pwd,
-              p.nome, p.cognome, p.ruolo, p.attivo
+      `SELECT u.id, u.email, u.password_hash, u.failed_attempts, u.locked_until, u.must_change_pwd, u.totp_enabled,
+        p.nome, p.cognome, p.ruolo, p.attivo
        FROM users u
        JOIN profiles p ON p.id = u.id
        WHERE u.email = $1`,
@@ -110,6 +112,19 @@ router.post('/login', async (req, res) => {
       `UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = $1`,
       [utente.id]
     )
+
+    // Se MFA attiva: non rilasciare i token, chiedi il codice TOTP
+    if (utente.totp_enabled) {
+      const tempToken = jwt.sign(
+        { sub: utente.id, scope: 'totp_pending' },
+        getPrivateKey(),
+        { algorithm: 'RS256', expiresIn: '5m', issuer: 'toscogas-ticketing' }
+      )
+      return res.json({ totp_required: true, temp_token: tempToken })
+    }
+
+    const user = { id: utente.id, email: utente.email, ruolo: utente.ruolo }
+    const accessToken  = signAccessToken(user)
 
     const user = { id: utente.id, email: utente.email, ruolo: utente.ruolo }
     const accessToken  = signAccessToken(user)
@@ -276,5 +291,145 @@ router.post('/reset-password', async (req, res) => {
     res.json({ message: 'Email inviata se presente' })
   }
 })
+// ─── POST /auth/totp/setup — genera segreto e QR code ─────────
+router.post('/totp/setup', authenticate, async (req, res) => {
+  try {
+    const secret = authenticator.generateSecret()
+
+    await db.query(
+      'UPDATE users SET totp_secret = $1, totp_enabled = false WHERE id = $2',
+      [secret, req.user.id]
+    )
+
+    const otpauth = authenticator.keyuri(
+      req.user.email,
+      'Toscogas Ticketing',
+      secret
+    )
+
+    const qrDataUrl = await QRCode.toDataURL(otpauth)
+
+    await audit(req.user.id, 'TOTP_SETUP_STARTED', 'users', req.user.id, {}, req)
+
+    res.json({ qr: qrDataUrl, secret })
+  } catch (err) {
+    logger.error('totp/setup error', { err: err.message })
+    res.status(500).json({ error: 'Errore interno' })
+  }
+})
+
+// ─── POST /auth/totp/verify-setup — conferma attivazione ──────
+router.post('/totp/verify-setup', authenticate, async (req, res) => {
+  const { code } = req.body || {}
+  if (!code) return res.status(400).json({ error: 'Codice mancante' })
+
+  try {
+    const { rows } = await db.query(
+      'SELECT totp_secret FROM users WHERE id = $1',
+      [req.user.id]
+    )
+    if (!rows[0]?.totp_secret) {
+      return res.status(400).json({ error: 'Setup TOTP non avviato' })
+    }
+
+    const valid = authenticator.verify({ token: code, secret: rows[0].totp_secret })
+    if (!valid) {
+      return res.status(401).json({ error: 'Codice non valido' })
+    }
+
+    await db.query(
+      'UPDATE users SET totp_enabled = true WHERE id = $1',
+      [req.user.id]
+    )
+
+    await audit(req.user.id, 'TOTP_ENABLED', 'users', req.user.id, {}, req)
+    res.json({ message: 'MFA attivata con successo' })
+  } catch (err) {
+    logger.error('totp/verify-setup error', { err: err.message })
+    res.status(500).json({ error: 'Errore interno' })
+  }
+})
+
+// ─── POST /auth/totp/verify — verifica codice al login ────────
+router.post('/totp/verify', async (req, res) => {
+  const { temp_token, code } = req.body || {}
+  if (!temp_token || !code) {
+    return res.status(400).json({ error: 'Parametri mancanti' })
+  }
+
+  try {
+    let payload
+    try {
+      payload = jwt.verify(temp_token, getPublicKey(), { algorithms: ['RS256'] })
+    } catch {
+      return res.status(401).json({ error: 'Sessione scaduta, ripeti il login' })
+    }
+
+    if (payload.scope !== 'totp_pending') {
+      return res.status(401).json({ error: 'Token non valido' })
+    }
+
+    const { rows } = await db.query(
+      `SELECT u.id, u.email, u.totp_secret, u.must_change_pwd,
+              p.nome, p.cognome, p.ruolo
+       FROM users u JOIN profiles p ON p.id = u.id
+       WHERE u.id = $1`,
+      [payload.sub]
+    )
+    const utente = rows[0]
+    if (!utente) return res.status(401).json({ error: 'Utente non trovato' })
+
+    const valid = authenticator.verify({ token: code, secret: utente.totp_secret })
+    if (!valid) {
+      await audit(utente.id, 'TOTP_FAILED', 'users', utente.id, {}, req)
+      return res.status(401).json({ error: 'Codice non valido' })
+    }
+
+    const user = { id: utente.id, email: utente.email, ruolo: utente.ruolo }
+    const accessToken  = signAccessToken(user)
+    const refreshToken = await createRefreshToken(utente.id, req)
+
+    await audit(utente.id, 'LOGIN_SUCCESS_TOTP', 'users', utente.id, {}, req)
+
+    res.json({
+      access_token:  accessToken,
+      refresh_token: refreshToken,
+      user: {
+        id:      utente.id,
+        email:   utente.email,
+        nome:    utente.nome,
+        cognome: utente.cognome,
+        ruolo:   utente.ruolo,
+        must_change_pwd: utente.must_change_pwd,
+        totp_enabled: true,
+      },
+    })
+  } catch (err) {
+    logger.error('totp/verify error', { err: err.message })
+    res.status(500).json({ error: 'Errore interno' })
+  }
+})
+
+// ─── POST /auth/totp/disable — il coordinatore disattiva MFA ──
+router.post('/totp/disable', authenticate, async (req, res) => {
+  if (req.user.ruolo !== 'coordinatore') {
+    return res.status(403).json({ error: 'Solo il coordinatore può disattivare la MFA' })
+  }
+  const { user_id } = req.body || {}
+  if (!user_id) return res.status(400).json({ error: 'user_id mancante' })
+
+  try {
+    await db.query(
+      'UPDATE users SET totp_secret = NULL, totp_enabled = false WHERE id = $1',
+      [user_id]
+    )
+    await audit(req.user.id, 'TOTP_DISABLED_BY_ADMIN', 'users', user_id, {}, req)
+    res.json({ message: 'MFA disattivata' })
+  } catch (err) {
+    logger.error('totp/disable error', { err: err.message })
+    res.status(500).json({ error: 'Errore interno' })
+  }
+})
+
 
 module.exports = router

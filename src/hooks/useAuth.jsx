@@ -40,7 +40,6 @@ export function AuthProvider({ children }) {
         setUser({ id: data.id, email: data.email })
         setProfilo(data)
       } else {
-        // Prova refresh
         const refreshed = await tryRefresh()
         if (!refreshed) {
           localStorage.removeItem('access_token')
@@ -82,6 +81,26 @@ export function AuthProvider({ children }) {
     })
     const data = await r.json()
     if (!r.ok) throw new Error(data.error || 'Login fallito')
+
+    // Se richiede TOTP, non salvare nulla — il Login gestirà lo step 2
+    if (data.totp_required) return data
+
+    localStorage.setItem('access_token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    setUser({ id: data.user.id, email: data.user.email })
+    setProfilo(data.user)
+    return data
+  }
+
+  async function completaLoginTotp(temp_token, code) {
+    const r = await fetch(`${API_BASE}/auth/totp/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ temp_token, code }),
+    })
+    const data = await r.json()
+    if (!r.ok) throw new Error(data.error || 'Codice non valido')
+
     localStorage.setItem('access_token', data.access_token)
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
     setUser({ id: data.user.id, email: data.user.email })
@@ -111,6 +130,7 @@ export function AuthProvider({ children }) {
       loading,
       profiloLoading,
       login,
+      completaLoginTotp,
       logout,
       caricaProfilo,
     }}>
