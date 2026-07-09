@@ -125,9 +125,6 @@ router.post('/login', async (req, res) => {
 
     const user = { id: utente.id, email: utente.email, ruolo: utente.ruolo }
     const accessToken  = signAccessToken(user)
-
-    const user = { id: utente.id, email: utente.email, ruolo: utente.ruolo }
-    const accessToken  = signAccessToken(user)
     const refreshToken = await createRefreshToken(utente.id, req)
 
     await audit(utente.id, 'LOGIN_SUCCESS', 'users', utente.id, { ip }, req)
