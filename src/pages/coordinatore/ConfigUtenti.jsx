@@ -166,6 +166,37 @@ export default function ConfigUtenti() {
     }
   }
 
+  async function disattivaMfa(utente) {
+    if (!window.confirm(`Disattivare la MFA di ${utente.nome} ${utente.cognome}? Al prossimo accesso dovrà riattivarla.`)) return
+
+    setErrore('')
+    setSuccesso('')
+
+    try {
+      const token = localStorage.getItem('access_token')
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || ''}/auth/totp/disable`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: utente.id }),
+        }
+      )
+      const result = await response.json()
+      if (!response.ok) {
+        setErrore(`Errore: ${result.error}`)
+        return
+      }
+      setSuccesso(`MFA di ${utente.nome} ${utente.cognome} disattivata.`)
+      caricaUtenti()
+    } catch (err) {
+      setErrore(`Errore di rete: ${err.message}`)
+    }
+  }
+
   async function resetPassword(utente) {
     if (!window.confirm(`Resettare la password di ${utente.nome} ${utente.cognome}? Verrà reimpostata a "Temporanea1!" e l'utente dovrà cambiarla al prossimo accesso.`)) return
 
@@ -321,6 +352,7 @@ export default function ConfigUtenti() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Utente</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Ruolo</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Stato</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">MFA</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Azioni</th>
             </tr>
           </thead>
@@ -342,6 +374,13 @@ export default function ConfigUtenti() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                    u.totp_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {u.totp_enabled ? 'Attiva' : 'Non attiva'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => apriFormModifica(u)}
@@ -355,6 +394,14 @@ export default function ConfigUtenti() {
                     >
                       Reset password
                     </button>
+                    {u.totp_enabled && (
+                      <button
+                        onClick={() => disattivaMfa(u)}
+                        className="text-xs border border-orange-300 text-orange-700 px-3 py-1 rounded-lg hover:bg-orange-50 transition"
+                      >
+                        Disattiva MFA
+                      </button>
+                    )}
                     <button
                       onClick={() => toggleAttivo(u)}
                       className={`text-xs border px-3 py-1 rounded-lg transition ${

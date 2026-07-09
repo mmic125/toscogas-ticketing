@@ -1,4 +1,9 @@
-const { Pool } = require('pg')
+const { Pool, types } = require('pg')
+
+// Le colonne DATE (OID 1082) vanno restituite come stringa 'YYYY-MM-DD',
+// non come oggetto Date: altrimenti JSON.stringify le serializza con
+// .toISOString() aggiungendo un orario fittizio (T00:00:00.000Z).
+types.setTypeParser(1082, val => val)
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

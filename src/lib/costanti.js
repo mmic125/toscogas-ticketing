@@ -26,6 +26,7 @@ export const TIPI_INTERVENTO_COMMERCIALE = {
   condizioni_commerciali: 'Condizioni commerciali',
   richiesta_disdetta:     'Richiesta disdetta',
   subentro:               'Subentro',
+  dilazione_pagamento:    'Richiesta dilazione pagamento',
 }
 
 export const TIPI_INTERVENTO_TECNICO = {

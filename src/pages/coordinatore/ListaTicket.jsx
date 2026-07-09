@@ -76,13 +76,17 @@ export default function ListaTicket() {
   const [utenti, setUtenti]   = useState([])
 
   const [filtri, setFiltri] = useState({
-    cerca:           '',
-    stati:           [],
-    priorita:        [],
-    tipi_intervento: [],
-    categorie:       [],
-    segnalatori:     [],
-    manutentori:     [],
+    cerca:                '',
+    stati:                [],
+    priorita:             [],
+    tipi_intervento:      [],
+    categorie:            [],
+    segnalatori:          [],
+    manutentori:          [],
+    data_apertura_da:     '',
+    data_apertura_a:      '',
+    data_risoluzione_da:  '',
+    data_risoluzione_a:   '',
   })
 
   useEffect(() => {
@@ -131,6 +135,10 @@ export default function ListaTicket() {
       if (filtri.categorie.length > 0       && !filtri.categorie.includes(t.categoria))   return false
       if (filtri.segnalatori.length > 0     && !filtri.segnalatori.includes(t.segnalatore_id)) return false
       if (filtri.manutentori.length > 0     && !filtri.manutentori.includes(t.manutentore_id)) return false
+      if (filtri.data_apertura_da && (!t.data_apertura || t.data_apertura < filtri.data_apertura_da)) return false
+      if (filtri.data_apertura_a && (!t.data_apertura || t.data_apertura > filtri.data_apertura_a)) return false
+      if (filtri.data_risoluzione_da && (!t.data_intervento || t.data_intervento < filtri.data_risoluzione_da)) return false
+      if (filtri.data_risoluzione_a && (!t.data_intervento || t.data_intervento > filtri.data_risoluzione_a)) return false
       return true
     })
   }, [tickets, filtri])
@@ -139,12 +147,21 @@ export default function ListaTicket() {
     setFiltri({
       cerca: '', stati: [], priorita: [], tipi_intervento: [],
       categorie: [], segnalatori: [], manutentori: [],
+      data_apertura_da: '', data_apertura_a: '',
+      data_risoluzione_da: '', data_risoluzione_a: '',
     })
+  }
+
+  function filtraApertoOggi() {
+    const oggi = new Date().toISOString().split('T')[0]
+    setFiltri(f => ({ ...f, data_apertura_da: oggi, data_apertura_a: oggi }))
   }
 
   const haFiltri = filtri.cerca || filtri.stati.length > 0 || filtri.priorita.length > 0 ||
     filtri.tipi_intervento.length > 0 || filtri.categorie.length > 0 ||
-    filtri.segnalatori.length > 0 || filtri.manutentori.length > 0
+    filtri.segnalatori.length > 0 || filtri.manutentori.length > 0 ||
+    filtri.data_apertura_da || filtri.data_apertura_a ||
+    filtri.data_risoluzione_da || filtri.data_risoluzione_a
 
   const segnalatori = utenti.filter(u => ['segnalatore','segnalatore_manutentore'].includes(u.ruolo))
   const manutentori = utenti.filter(u => ['manutentore','segnalatore_manutentore'].includes(u.ruolo))
@@ -257,6 +274,57 @@ export default function ListaTicket() {
           )}
         </div>
 
+        {/* Filtri data */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-3">
+          <div className="lg:col-span-2 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Apertura da</label>
+              <input
+                type="date"
+                value={filtri.data_apertura_da}
+                onChange={e => setFiltri(f => ({ ...f, data_apertura_da: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">a</label>
+              <input
+                type="date"
+                value={filtri.data_apertura_a}
+                onChange={e => setFiltri(f => ({ ...f, data_apertura_a: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={filtraApertoOggi}
+              className="border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              Oggi
+            </button>
+          </div>
+          <div className="lg:col-span-2 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Risoluzione da</label>
+              <input
+                type="date"
+                value={filtri.data_risoluzione_da}
+                onChange={e => setFiltri(f => ({ ...f, data_risoluzione_da: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">a</label>
+              <input
+                type="date"
+                value={filtri.data_risoluzione_a}
+                onChange={e => setFiltri(f => ({ ...f, data_risoluzione_a: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {haFiltri && (
           <button onClick={resetFiltri} className="mt-3 text-sm text-red-600 hover:underline">
             Reset filtri
@@ -284,12 +352,13 @@ export default function ListaTicket() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Assegnatario</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Apertura</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Int. Richiesto</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Data Risoluzione</th>
               </tr>
             </thead>
             <tbody>
               {ticketsFiltrati.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-gray-400">
+                  <td colSpan={11} className="text-center py-12 text-gray-400">
                     Nessun ticket trovato
                   </td>
                 </tr>
@@ -338,6 +407,9 @@ export default function ListaTicket() {
                     <td className="px-4 py-3 text-gray-600">{t.data_apertura}</td>
                     <td className="px-4 py-3 text-gray-600">
                       {t.data_intervento_richiesta || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.data_intervento || '—'}
                     </td>
                   </tr>
                 ))

@@ -181,6 +181,23 @@ class StorageBucket {
       data: { publicUrl: `${STORAGE_BASE}/${this._bucket}/${path}` }
     }
   }
+
+  // Il bucket è privato: le richieste richiedono l'header Authorization,
+  // quindi non è utilizzabile un <img src> diretto con getPublicUrl.
+  async download(path) {
+    try {
+      const r = await fetch(`${STORAGE_BASE}/${this._bucket}/${path}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ message: 'Download fallito' }))
+        return { data: null, error: err }
+      }
+      return { data: await r.blob(), error: null }
+    } catch (e) {
+      return { data: null, error: { message: e.message } }
+    }
+  }
 }
 
 class StorageClient {

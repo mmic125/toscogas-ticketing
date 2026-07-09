@@ -27,6 +27,8 @@ export default function ListaTicketAssegnati() {
   const [errore, setErrore]   = useState('')
   const [filtri, setFiltri]   = useState({
     cerca: '', stato: '', priorita: '', tipo_problema: '',
+    data_apertura_da: '', data_apertura_a: '',
+    data_risoluzione_da: '', data_risoluzione_a: '',
   })
 
   useEffect(() => { caricaTickets() }, [])
@@ -59,6 +61,10 @@ export default function ListaTicketAssegnati() {
       if (filtri.stato && t.stato !== filtri.stato) return false
       if (filtri.priorita && t.priorita !== filtri.priorita) return false
       if (filtri.tipo_problema && t.tipo_problema !== filtri.tipo_problema) return false
+      if (filtri.data_apertura_da && (!t.data_apertura || t.data_apertura < filtri.data_apertura_da)) return false
+      if (filtri.data_apertura_a && (!t.data_apertura || t.data_apertura > filtri.data_apertura_a)) return false
+      if (filtri.data_risoluzione_da && (!t.data_intervento || t.data_intervento < filtri.data_risoluzione_da)) return false
+      if (filtri.data_risoluzione_a && (!t.data_intervento || t.data_intervento > filtri.data_risoluzione_a)) return false
       return true
     })
   }, [tickets, filtri])
@@ -68,7 +74,16 @@ export default function ListaTicketAssegnati() {
   }
 
   function resetFiltri() {
-    setFiltri({ cerca: '', stato: '', priorita: '', tipo_problema: '' })
+    setFiltri({
+      cerca: '', stato: '', priorita: '', tipo_problema: '',
+      data_apertura_da: '', data_apertura_a: '',
+      data_risoluzione_da: '', data_risoluzione_a: '',
+    })
+  }
+
+  function filtraApertoOggi() {
+    const oggi = new Date().toISOString().split('T')[0]
+    setFiltri(f => ({ ...f, data_apertura_da: oggi, data_apertura_a: oggi }))
   }
 
   if (loading) return (
@@ -117,7 +132,40 @@ export default function ListaTicketAssegnati() {
             ))}
           </select>
         </div>
-        {(filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema) && (
+
+        {/* Filtri data */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Apertura da</label>
+            <input type="date" name="data_apertura_da" value={filtri.data_apertura_da} onChange={handleFiltro}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">a</label>
+              <input type="date" name="data_apertura_a" value={filtri.data_apertura_a} onChange={handleFiltro}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            </div>
+            <button type="button" onClick={filtraApertoOggi}
+              className="border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+              Oggi
+            </button>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Risoluzione da</label>
+            <input type="date" name="data_risoluzione_da" value={filtri.data_risoluzione_da} onChange={handleFiltro}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">a</label>
+            <input type="date" name="data_risoluzione_a" value={filtri.data_risoluzione_a} onChange={handleFiltro}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+        </div>
+
+        {(filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema ||
+          filtri.data_apertura_da || filtri.data_apertura_a ||
+          filtri.data_risoluzione_da || filtri.data_risoluzione_a) && (
           <button onClick={resetFiltri} className="mt-2 text-sm text-red-600 hover:underline">
             Reset filtri
           </button>

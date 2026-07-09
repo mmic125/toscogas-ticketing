@@ -42,6 +42,10 @@ export default function RisoluzioneTicket() {
 
   useEffect(() => { caricaDati() }, [id])
 
+  useEffect(() => {
+    return () => { allegati.forEach(a => a.url && URL.revokeObjectURL(a.url)) }
+  }, [allegati])
+
   async function caricaDati() {
     setLoading(true)
     const { data: t, error } = await supabase
@@ -75,13 +79,13 @@ export default function RisoluzioneTicket() {
       .order('ordine')
 
     if (f && f.length > 0) {
-      const allegatiConUrl = f.map(all => {
-        const { data } = supabase.storage
-          .from('ticket-foto')
-          .getPublicUrl(all.storage_path)
+      const allegatiConUrl = await Promise.all(f.map(async all => {
         const isPdf = all.storage_path.toLowerCase().endsWith('.pdf')
-        return { ...all, url: data.publicUrl, isPdf }
-      })
+        const { data: blob } = await supabase.storage
+          .from('ticket-foto')
+          .download(all.storage_path)
+        return { ...all, url: blob ? URL.createObjectURL(blob) : null, isPdf }
+      }))
       setAllegati(allegatiConUrl)
     }
 

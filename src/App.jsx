@@ -33,13 +33,15 @@ function LoadingScreen() {
   )
 }
 
-function ProtectedRoute({ children, ruoliConsentiti }) {
+function ProtectedRoute({ children, ruoliConsentiti, skipMfaCheck }) {
   const { user, profilo, loading, profiloLoading } = useAuth()
   if (loading || profiloLoading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!profilo) return <Navigate to="/login" replace />
   // Se deve cambiare password, reindirizza
   if (profilo.must_change_pwd) return <Navigate to="/change-password" replace />
+  // Se non ha ancora attivato la MFA, reindirizza (tranne sulla pagina di attivazione stessa)
+  if (!skipMfaCheck && !profilo.totp_enabled) return <Navigate to="/mfa" replace />
   if (ruoliConsentiti && !ruoliConsentiti.includes(profilo.ruolo)) {
     return <Navigate to="/" replace />
   }
@@ -52,6 +54,8 @@ function HomeRedirect() {
   if (!profilo) return <Navigate to="/login" replace />
   // Se deve cambiare password, reindirizza
   if (profilo.must_change_pwd) return <Navigate to="/change-password" replace />
+  // Se non ha ancora attivato la MFA, reindirizza
+  if (!profilo.totp_enabled) return <Navigate to="/mfa" replace />
   switch (profilo.ruolo) {
     case RUOLI.COORDINATORE:            return <Navigate to="/coordinatore" replace />
     case RUOLI.SEGNALATORE:             return <Navigate to="/segnalatore" replace />
@@ -68,7 +72,7 @@ function AppRoutes() {
       <Route path="/change-password" element={<CambioPassword />} />
             {/* MFA — accessibile a tutti gli utenti autenticati */}
       <Route path="/mfa" element={
-        <ProtectedRoute>
+        <ProtectedRoute skipMfaCheck>
           <Layout />
         </ProtectedRoute>
       }>

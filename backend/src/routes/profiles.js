@@ -39,8 +39,8 @@ router.get('/', async (req, res) => {
       : 'ORDER BY cognome ASC, nome ASC'
 
     const { rows } = await db.query(
-      `SELECT id, email, nome, cognome, ruolo, attivo, created_at
-       FROM profiles ${where} ${order}`,
+      `SELECT p.id, p.email, p.nome, p.cognome, p.ruolo, p.attivo, p.created_at, u.totp_enabled
+       FROM profiles p JOIN users u ON u.id = p.id ${where} ${order}`,
       values
     )
     res.json(rows)

@@ -24,6 +24,10 @@ export default function Login() {
       navigate('/change-password', { replace: true })
       return
     }
+    if (!profilo.totp_enabled) {
+      navigate('/mfa', { replace: true })
+      return
+    }
     switch (profilo.ruolo) {
       case 'coordinatore':            navigate('/coordinatore', { replace: true }); break
       case 'segnalatore':             navigate('/segnalatore',  { replace: true }); break

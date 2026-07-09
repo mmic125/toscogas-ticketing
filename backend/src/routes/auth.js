@@ -141,6 +141,7 @@ router.post('/login', async (req, res) => {
         cognome:         utente.cognome,
         ruolo:           utente.ruolo,
         must_change_pwd: utente.must_change_pwd,
+        totp_enabled:    utente.totp_enabled,
       },
     })
   } catch (err) {
@@ -194,7 +195,7 @@ router.post('/refresh', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT p.id, p.email, p.nome, p.cognome, p.ruolo, u.must_change_pwd
+      `SELECT p.id, p.email, p.nome, p.cognome, p.ruolo, u.must_change_pwd, u.totp_enabled
        FROM profiles p JOIN users u ON u.id = p.id
        WHERE p.id = $1`,
       [req.user.id]
