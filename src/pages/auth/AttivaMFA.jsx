@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export default function AttivaMFA() {
   const navigate = useNavigate()
+  const { caricaProfilo } = useAuth()
 
-  const [step, setStep]       = useState('intro')  // intro | qr | done
+  const [step, setStep]       = useState('intro')  // intro | qr
   const [qr, setQr]           = useState('')
   const [secret, setSecret]   = useState('')
   const [code, setCode]       = useState('')
@@ -50,7 +52,11 @@ export default function AttivaMFA() {
       })
       const data = await r.json()
       if (!r.ok) { setErrore(data.error || 'Codice non valido'); return }
-      setStep('done')
+      // Il profilo in memoria ha ancora totp_enabled: false — va ricaricato
+      // prima di tornare alla home, altrimenti il redirect obbligatorio
+      // (App.jsx) rimanderebbe di nuovo qui.
+      await caricaProfilo()
+      navigate('/', { replace: true })
     } catch (e) {
       setErrore(`Errore di rete: ${e.message}`)
     } finally {
@@ -126,23 +132,6 @@ export default function AttivaMFA() {
               {loading ? 'Verifica...' : 'Verifica e attiva'}
             </button>
           </form>
-        </div>
-      )}
-
-      {step === 'done' && (
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 text-center">
-          <div className="text-4xl">✅</div>
-          <h2 className="text-lg font-medium text-gray-800">MFA attivata!</h2>
-          <p className="text-sm text-gray-600">
-            Dal prossimo accesso ti verrà chiesto il codice a 6 cifre dall'app Google Authenticator.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            style={{ backgroundColor: '#C8181E' }}
-            className="w-full text-white py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
-          >
-            Torna alla home
-          </button>
         </div>
       )}
     </div>
