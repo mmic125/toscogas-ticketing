@@ -155,4 +155,35 @@ router.post('/admin/create', requireRuolo('coordinatore'), async (req, res) => {
   }
 })
 
+// ─── POST /api/profiles/admin/reset-password — reset password (coordinatore) ─
+router.post('/admin/reset-password', requireRuolo('coordinatore'), async (req, res) => {
+  const { user_id } = req.body || {}
+  if (!user_id) return res.status(400).json({ error: 'user_id mancante' })
+
+  const TEMP_PASSWORD = 'Temporanea1!'
+
+  try {
+    const existing = await db.query('SELECT id FROM users WHERE id = $1', [user_id])
+    if (!existing.rows[0]) {
+      return res.status(404).json({ error: 'Utente non trovato' })
+    }
+
+    const hash = await argon2.hash(TEMP_PASSWORD, ARGON2_OPTIONS)
+
+    await db.query(
+      `UPDATE users
+       SET password_hash = $1, must_change_pwd = true, failed_attempts = 0, locked_until = NULL
+       WHERE id = $2`,
+      [hash, user_id]
+    )
+
+    await audit(req.user.id, 'PASSWORD_RESET_BY_ADMIN', 'users', user_id, {}, req)
+
+    res.json({ message: `Password reimpostata. Password temporanea: ${TEMP_PASSWORD}` })
+  } catch (err) {
+    logger.error('POST /admin/reset-password error', { err: err.message })
+    res.status(500).json({ error: 'Errore interno' })
+  }
+})
+
 module.exports = router
