@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import {
   STATI_LABEL, PRIORITA_LABEL, TIPI_INTERVENTO,
-  STATO_COLORS, PRIORITA_COLORS, CATEGORIE
+  STATO_COLORS, PRIORITA_COLORS, CATEGORIE, RUOLI, formatOra
 } from '../../lib/costanti'
 import * as XLSX from 'xlsx'
 
@@ -70,10 +71,12 @@ function MultiSelect({ label, opzioni, valori, onChange }) {
 
 export default function ListaTicket() {
   const navigate = useNavigate()
+  const { ruolo } = useAuth()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [errore, setErrore]   = useState('')
   const [utenti, setUtenti]   = useState([])
+  const [filtriAperti, setFiltriAperti] = useState(false)
 
   const [filtri, setFiltri] = useState({
     cerca:                '',
@@ -208,18 +211,35 @@ export default function ListaTicket() {
           <h1 className="text-2xl font-semibold text-gray-800">Tutti i Ticket</h1>
           <p className="text-sm text-gray-500 mt-1">{ticketsFiltrati.length} ticket trovati</p>
         </div>
-        <button
-          onClick={esportaExcel}
-          className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Esporta Excel
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFiltriAperti(v => !v)}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 12h12M10 20h4" />
+            </svg>
+            Filtri
+            {haFiltri && (
+              <span className="bg-red-100 text-red-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                !
+              </span>
+            )}
+          </button>
+          <button
+            onClick={esportaExcel}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Esporta Excel
+          </button>
+        </div>
       </div>
 
       {/* Filtri */}
+      {filtriAperti && (
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         {/* Ricerca testo */}
         <input
@@ -331,6 +351,7 @@ export default function ListaTicket() {
           </button>
         )}
       </div>
+      )}
 
       {errore && (
         <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{errore}</p>
@@ -366,7 +387,7 @@ export default function ListaTicket() {
                 ticketsFiltrati.map(t => (
                   <tr
                     key={t.id}
-                    onClick={() => navigate(`/coordinatore/ticket/${t.id}`)}
+                    onClick={() => navigate(ruolo === RUOLI.FRONT_OFFICE ? `/front-office/ticket/${t.id}` : `/coordinatore/ticket/${t.id}`)}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition"
                   >
                     <td className="px-4 py-3">
@@ -404,12 +425,12 @@ export default function ListaTicket() {
                         ? `${t.manutentore.nome} ${t.manutentore.cognome}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{t.data_apertura}</td>
+                    <td className="px-4 py-3 text-gray-600">{t.data_apertura} <span className="text-gray-400">{formatOra(t.created_at)}</span></td>
                     <td className="px-4 py-3 text-gray-600">
                       {t.data_intervento_richiesta || '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {t.data_intervento || '—'}
+                      {t.data_intervento ? <>{t.data_intervento} <span className="text-gray-400">{formatOra(t.updated_at)}</span></> : '—'}
                     </td>
                   </tr>
                 ))

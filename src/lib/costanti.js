@@ -3,6 +3,7 @@ export const RUOLI = {
   SEGNALATORE: 'segnalatore',
   MANUTENTORE: 'manutentore',
   SEGNALATORE_MANUTENTORE: 'segnalatore_manutentore',
+  FRONT_OFFICE: 'front_office',
 }
 
 export const STATI_TICKET = {
@@ -21,25 +22,26 @@ export const PRIORITA = {
 }
 
 export const TIPI_INTERVENTO_COMMERCIALE = {
-  sopralluogo:            'Sopralluogo',
-  nuova_pratica:          'Nuova pratica',
   condizioni_commerciali: 'Condizioni commerciali',
+  nuova_pratica:          'Nuova pratica',
+  dilazione_pagamento:    'Pagamenti',
   richiesta_disdetta:     'Richiesta disdetta',
+  sopralluogo:            'Sopralluogo',
   subentro:               'Subentro',
-  dilazione_pagamento:    'Richiesta dilazione pagamento',
 }
 
 export const TIPI_INTERVENTO_TECNICO = {
-  sopralluogo:                    'Sopralluogo',
+  apertura_contatore_morosita:    'Apertura contatore post-morosità',
   guasto_contatore:               'Guasto contatore',
-  manutenzione_serbatoio:         'Manutenzione serbatoio',
-  telecontrollo:                  'Telecontrollo',
-  rimozione_contatore_morosita:   'Rimozione contatore per morosità',
+  guasto_mezzo:                   'Guasto mezzo',
   installazione_nuovo_contatore:  'Installazione nuovo contatore',
   installazione_serbatoio:        'Installazione serbatoio',
-  sostituzione_serbatoio:         'Sostituzione serbatoio',
+  manutenzione_serbatoio:         'Manutenzione serbatoio',
+  rimozione_contatore_morosita:   'Rimozione contatore per morosità',
   rimozione_serbatoio:            'Rimozione serbatoio',
-  guasto_mezzo:                   'Guasto mezzo',
+  sopralluogo:                    'Sopralluogo',
+  sostituzione_serbatoio:         'Sostituzione serbatoio',
+  telecontrollo:                  'Telecontrollo',
   altro:                          'Altro',
 }
 
@@ -97,6 +99,14 @@ export const PRIORITA_COLORS = {
   alta:    'bg-orange-100 text-orange-800',
   media:   'bg-yellow-100 text-yellow-800',
   bassa:   'bg-green-100 text-green-800',
+}
+
+export function formatOra(iso) {
+  return iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''
+}
+
+export function formatData(iso) {
+  return iso ? new Date(iso).toLocaleDateString('it-IT') : ''
 }
 
 export const MAX_FOTO = 3

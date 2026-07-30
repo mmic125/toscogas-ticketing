@@ -61,6 +61,7 @@ function HomeRedirect() {
     case RUOLI.SEGNALATORE:             return <Navigate to="/segnalatore" replace />
     case RUOLI.MANUTENTORE:             return <Navigate to="/manutentore" replace />
     case RUOLI.SEGNALATORE_MANUTENTORE: return <Navigate to="/segnalatore" replace />
+    case RUOLI.FRONT_OFFICE:            return <Navigate to="/front-office" replace />
     default:                            return <Navigate to="/login" replace />
   }
 }
@@ -126,6 +127,18 @@ function AppRoutes() {
       }>
         <Route index element={<ListaTicketAssegnati />} />
         <Route path="ticket/:id" element={<LavorazioneTicket />} />
+      </Route>
+
+      {/* Front Office - sola lettura */}
+      <Route path="/front-office" element={
+        <ProtectedRoute ruoliConsentiti={[RUOLI.FRONT_OFFICE]}>
+          <Layout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<ListaTicket />} />
+        <Route path="aperti" element={<ListaTicketAperti />} />
+        <Route path="nuovo" element={<NuovoTicket />} />
+        <Route path="ticket/:id" element={<DettaglioTicket />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

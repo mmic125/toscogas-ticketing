@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import {
   TIPI_INTERVENTO, PRIORITA_LABEL, STATI_LABEL,
   PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE,
-  MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI
+  MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI, formatOra
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -305,6 +305,10 @@ export default function RisoluzioneTicket() {
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Intervento Richiesto</p>
               <p className="text-gray-800">{ticket.data_intervento_richiesta || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Data Apertura</p>
+              <p className="text-gray-800">{ticket.data_apertura} <span className="text-gray-400">{formatOra(ticket.created_at)}</span></p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">

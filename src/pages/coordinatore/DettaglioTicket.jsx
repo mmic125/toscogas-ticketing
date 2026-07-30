@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import {
   STATI_LABEL, PRIORITA_LABEL, TIPI_INTERVENTO,
-  STATO_COLORS, PRIORITA_COLORS, CATEGORIE
+  STATO_COLORS, PRIORITA_COLORS, CATEGORIE, RUOLI, formatOra, formatData
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -26,6 +27,9 @@ function Campo({ label, children }) {
 export default function DettaglioTicket() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { ruolo } = useAuth()
+  const soloLettura = ruolo === RUOLI.FRONT_OFFICE
+  const listaPath = soloLettura ? '/front-office' : '/coordinatore'
 
   const [ticket, setTicket]           = useState(null)
   const [assegnatari, setAssegnatari] = useState([])
@@ -199,7 +203,7 @@ export default function DettaglioTicket() {
     setSaving(false)
   }
 
-  const chiuso = ticket?.stato === 'chiuso'
+  const chiuso = ticket?.stato === 'chiuso' || soloLettura
   const oggi   = new Date().toISOString().split('T')[0]
 
   if (loading) return (
@@ -216,7 +220,7 @@ export default function DettaglioTicket() {
     <div className="max-w-4xl mx-auto">
       {/* Intestazione */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <button onClick={() => navigate('/coordinatore')} className="text-gray-400 hover:text-gray-600 transition">
+        <button onClick={() => navigate(listaPath)} className="text-gray-400 hover:text-gray-600 transition">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -236,10 +240,6 @@ export default function DettaglioTicket() {
             <button onClick={salva} disabled={saving}
               className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
               {saving ? 'Salvataggio...' : 'Salva modifiche'}
-            </button>
-            <button onClick={assegna} disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
-              Assegna Ticket
             </button>
             <button onClick={() => navigate(`/coordinatore/ticket/${id}/risoluzione`)}
               className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
@@ -413,6 +413,12 @@ export default function DettaglioTicket() {
                   onChange={handleChange} min={oggi} disabled={chiuso}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
+              {!chiuso && (
+                <button onClick={assegna} disabled={saving}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                  Assegna Ticket
+                </button>
+              )}
             </div>
           </div>
 
@@ -422,8 +428,11 @@ export default function DettaglioTicket() {
             <Campo label="Segnalatore">
               {ticket.segnalatore ? `${ticket.segnalatore.nome} ${ticket.segnalatore.cognome}` : '—'}
             </Campo>
-            <Campo label="Data Apertura">{ticket.data_apertura}</Campo>
+            <Campo label="Data Apertura">{ticket.data_apertura} {formatOra(ticket.created_at)}</Campo>
             <Campo label="Data Intervento">{ticket.data_intervento || '—'}</Campo>
+            <Campo label={ticket.stato === 'chiuso' ? 'Data Chiusura' : 'Ultima Modifica'}>
+              {formatData(ticket.updated_at)} {formatOra(ticket.updated_at)}
+            </Campo>
             <Campo label="Stato">
               <Badge testo={STATI_LABEL[ticket.stato]} colori={STATO_COLORS[ticket.stato]} />
             </Campo>

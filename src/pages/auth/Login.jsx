@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -7,6 +7,8 @@ const API_BASE = import.meta.env.VITE_API_URL || ''
 export default function Login() {
   const { login, completaLoginTotp } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const sessioneScaduta = !!location.state?.sessionExpired
 
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
@@ -86,6 +88,12 @@ export default function Login() {
           <h1 className="text-2xl font-semibold text-gray-900">Toscogas</h1>
           <p className="text-sm text-gray-500 mt-1">Sistema Ticketing</p>
         </div>
+
+        {sessioneScaduta && (
+          <p className="text-sm text-orange-700 bg-orange-50 rounded-lg px-3 py-2 mb-4 text-center">
+            Sessione scaduta, effettuare l'accesso.
+          </p>
+        )}
 
         {totpRequired ? (
           /* ─── Step 2: codice TOTP ─── */

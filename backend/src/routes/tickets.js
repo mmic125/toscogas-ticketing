@@ -80,10 +80,16 @@ router.get('/', async (req, res) => {
     const { conditions, values } = buildWhere(req.query, ALLOWED_FILTERS)
     const order = buildOrder(req.query.order)
 
-    // I manutentori vedono solo i propri ticket
-    if (ruolo === 'manutentore' || ruolo === 'segnalatore_manutentore') {
+    // I manutentori vedono solo i propri ticket assegnati; i segnalatore/manutentore
+    // vedono anche i ticket che hanno aperto loro come segnalatori (altrimenti non
+    // comparirebbero in "Ticket Aperti da me" finché non vengono assegnati a se stessi)
+    if (ruolo === 'manutentore') {
       const idx = values.length + 1
       conditions.push(`t.manutentore_id = $${idx}`)
+      values.push(req.user.id)
+    } else if (ruolo === 'segnalatore_manutentore') {
+      const idx = values.length + 1
+      conditions.push(`(t.manutentore_id = $${idx} OR t.segnalatore_id = $${idx})`)
       values.push(req.user.id)
     }
 
@@ -165,6 +171,11 @@ router.patch('/:id', async (req, res) => {
 
     const ticket = check.rows[0]
     const ruolo  = req.user.ruolo
+
+    // Front Office è sola lettura anche lato server
+    if (ruolo === 'front_office') {
+      return res.status(403).json({ error: 'Accesso in sola lettura' })
+    }
 
     // I manutentori possono aggiornare solo i propri ticket
     if ((ruolo === 'manutentore' || ruolo === 'segnalatore_manutentore')

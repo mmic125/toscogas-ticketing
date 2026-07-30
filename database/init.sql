@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── Tipi enum ────────────────────────────────────────────────
 CREATE TYPE ruolo_utente AS ENUM (
-  'coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore'
+  'coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office'
 );
 
 CREATE TYPE stato_ticket AS ENUM (

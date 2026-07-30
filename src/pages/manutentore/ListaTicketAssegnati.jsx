@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
   STATI_LABEL, PRIORITA_LABEL, TIPI_INTERVENTO,
-  STATO_COLORS, PRIORITA_COLORS, CATEGORIE
+  STATO_COLORS, PRIORITA_COLORS, CATEGORIE, formatOra
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -25,6 +25,7 @@ export default function ListaTicketAssegnati() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [errore, setErrore]   = useState('')
+  const [filtriAperti, setFiltriAperti] = useState(false)
   const [filtri, setFiltri]   = useState({
     cerca: '', stato: '', priorita: '', tipo_problema: '',
     data_apertura_da: '', data_apertura_a: '',
@@ -86,6 +87,10 @@ export default function ListaTicketAssegnati() {
     setFiltri(f => ({ ...f, data_apertura_da: oggi, data_apertura_a: oggi }))
   }
 
+  const haFiltri = filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema ||
+    filtri.data_apertura_da || filtri.data_apertura_a ||
+    filtri.data_risoluzione_da || filtri.data_risoluzione_a
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <p className="text-gray-400 text-sm">Caricamento ticket...</p>
@@ -94,12 +99,27 @@ export default function ListaTicketAssegnati() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Ticket Assegnati</h1>
-        <p className="text-sm text-gray-500 mt-1">{ticketsFiltrati.length} ticket da lavorare</p>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">Ticket Assegnati</h1>
+          <p className="text-sm text-gray-500 mt-1">{ticketsFiltrati.length} ticket da lavorare</p>
+        </div>
+        <button
+          onClick={() => setFiltriAperti(v => !v)}
+          className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 12h12M10 20h4" />
+          </svg>
+          Filtri
+          {haFiltri && (
+            <span className="bg-red-100 text-red-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">!</span>
+          )}
+        </button>
       </div>
 
       {/* Filtri */}
+      {filtriAperti && (
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input
@@ -163,14 +183,13 @@ export default function ListaTicketAssegnati() {
           </div>
         </div>
 
-        {(filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema ||
-          filtri.data_apertura_da || filtri.data_apertura_a ||
-          filtri.data_risoluzione_da || filtri.data_risoluzione_a) && (
+        {haFiltri && (
           <button onClick={resetFiltri} className="mt-2 text-sm text-red-600 hover:underline">
             Reset filtri
           </button>
         )}
       </div>
+      )}
 
       {errore && (
         <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{errore}</p>
@@ -231,7 +250,7 @@ export default function ListaTicketAssegnati() {
                       {t.data_intervento_richiesta || '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {t.data_intervento || '—'}
+                      {t.data_intervento ? <>{t.data_intervento} <span className="text-gray-400">{formatOra(t.updated_at)}</span></> : '—'}
                     </td>
                   </tr>
                 ))

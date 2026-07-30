@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
   STATI_LABEL, PRIORITA_LABEL, TIPI_INTERVENTO,
-  STATO_COLORS, PRIORITA_COLORS, CATEGORIE
+  STATO_COLORS, PRIORITA_COLORS, CATEGORIE, RUOLI, formatOra
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -16,11 +16,12 @@ function Badge({ testo, colori }) {
 }
 
 export default function ListaTicketAperti() {
-  const { profilo } = useAuth()
+  const { profilo, ruolo } = useAuth()
   const navigate = useNavigate()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [errore, setErrore]   = useState('')
+  const [filtriAperti, setFiltriAperti] = useState(false)
   const [filtri, setFiltri]   = useState({
     cerca: '', stato: '', priorita: '', tipo_problema: '',
     data_apertura_da: '', data_apertura_a: '',
@@ -81,6 +82,13 @@ export default function ListaTicketAperti() {
     setFiltri(f => ({ ...f, data_apertura_da: oggi, data_apertura_a: oggi }))
   }
 
+  const haFiltri = filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema ||
+    filtri.data_apertura_da || filtri.data_apertura_a ||
+    filtri.data_risoluzione_da || filtri.data_risoluzione_a
+
+  const nuovoTicketPath = ruolo === RUOLI.FRONT_OFFICE ? '/front-office/nuovo' : '/segnalatore/nuovo'
+  const dettaglioPath   = id => ruolo === RUOLI.FRONT_OFFICE ? `/front-office/ticket/${id}` : `/segnalatore/ticket/${id}`
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <p className="text-gray-400 text-sm">Caricamento ticket...</p>
@@ -91,22 +99,37 @@ export default function ListaTicketAperti() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">I miei Ticket</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">Ticket Aperti da me</h1>
           <p className="text-sm text-gray-500 mt-1">{ticketsFiltrati.length} ticket trovati</p>
         </div>
-        <button
-          onClick={() => navigate('/segnalatore/nuovo')}
-          style={{ backgroundColor: '#C8181E' }}
-          className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-        >
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Nuovo Ticket
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFiltriAperti(v => !v)}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 12h12M10 20h4" />
+            </svg>
+            Filtri
+            {haFiltri && (
+              <span className="bg-red-100 text-red-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">!</span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate(nuovoTicketPath)}
+            style={{ backgroundColor: '#C8181E' }}
+            className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nuovo Ticket
+          </button>
+        </div>
       </div>
 
       {/* Filtri */}
+      {filtriAperti && (
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input
@@ -170,14 +193,13 @@ export default function ListaTicketAperti() {
           </div>
         </div>
 
-        {(filtri.cerca || filtri.stato || filtri.priorita || filtri.tipo_problema ||
-          filtri.data_apertura_da || filtri.data_apertura_a ||
-          filtri.data_risoluzione_da || filtri.data_risoluzione_a) && (
+        {haFiltri && (
           <button onClick={resetFiltri} className="mt-2 text-sm text-red-600 hover:underline">
             Reset filtri
           </button>
         )}
       </div>
+      )}
 
       {errore && (
         <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{errore}</p>
@@ -208,7 +230,7 @@ export default function ListaTicketAperti() {
               ) : (
                 ticketsFiltrati.map(t => (
                   <tr key={t.id}
-                    onClick={() => navigate(`/segnalatore/ticket/${t.id}`)}
+                    onClick={() => navigate(dettaglioPath(t.id))}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition"
                   >
                     <td className="px-4 py-3">
@@ -234,8 +256,10 @@ export default function ListaTicketAperti() {
                         colori={STATO_COLORS[t.stato] || 'bg-gray-100 text-gray-600'}
                       />
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{t.data_apertura}</td>
-                    <td className="px-4 py-3 text-gray-600">{t.data_intervento || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{t.data_apertura} <span className="text-gray-400">{formatOra(t.created_at)}</span></td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.data_intervento ? <>{t.data_intervento} <span className="text-gray-400">{formatOra(t.updated_at)}</span></> : '—'}
+                    </td>
                   </tr>
                 ))
               )}

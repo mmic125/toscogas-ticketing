@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import {
   TIPI_INTERVENTO, PRIORITA_LABEL, STATI_LABEL,
   PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE,
-  MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI
+  MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI, formatOra
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -20,6 +20,10 @@ export default function LavorazioneTicket() {
   const { id } = useParams()
   const { profilo } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  // Questo componente è montato sia su /manutentore che su /segnalatore/assegnati:
+  // il redirect deve restare sotto la base da cui si è navigato.
+  const listaPath = pathname.startsWith('/segnalatore') ? '/segnalatore/assegnati' : '/manutentore'
 
   const [ticket, setTicket]     = useState(null)
   const [allegati, setAllegati] = useState([])
@@ -196,7 +200,7 @@ export default function LavorazioneTicket() {
 
     if (nuovoStato === 'risolto') {
       setSuccesso('Intervento chiuso. Ticket impostato come Risolto.')
-      setTimeout(() => navigate('/manutentore'), 1500)
+      setTimeout(() => navigate(listaPath), 1500)
     } else {
       setSuccesso('Intervento parziale salvato.')
       setNuoviAllegati([])
@@ -224,7 +228,7 @@ export default function LavorazioneTicket() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <button onClick={() => navigate('/manutentore')} className="text-gray-400 hover:text-gray-600 transition">
+        <button onClick={() => navigate(listaPath)} className="text-gray-400 hover:text-gray-600 transition">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -309,6 +313,10 @@ export default function LavorazioneTicket() {
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Intervento Richiesto</p>
               <p className="text-gray-800">{ticket.data_intervento_richiesta || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Data Apertura</p>
+              <p className="text-gray-800">{ticket.data_apertura} <span className="text-gray-400">{formatOra(ticket.created_at)}</span></p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">

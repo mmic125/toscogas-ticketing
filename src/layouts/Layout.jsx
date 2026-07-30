@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import { RUOLI } from '../lib/costanti'
 
 // Icone SVG inline leggere
@@ -44,8 +45,8 @@ function getMenuVoci(ruolo) {
   ]
     case RUOLI.SEGNALATORE:
       return [
-        { to: '/segnalatore',          label: 'I miei Ticket',     icon: <IconTicket /> },
-        { to: '/segnalatore/nuovo',    label: 'Nuovo Ticket',      icon: <IconPlus /> },
+        { to: '/segnalatore',          label: 'Ticket Aperti da me', icon: <IconTicket /> },
+        { to: '/segnalatore/nuovo',    label: 'Nuovo Ticket',        icon: <IconPlus /> },
       ]
     case RUOLI.MANUTENTORE:
       return [
@@ -54,9 +55,15 @@ function getMenuVoci(ruolo) {
       ]
     case RUOLI.SEGNALATORE_MANUTENTORE:
       return [
-        { to: '/segnalatore',              label: 'I miei Ticket',    icon: <IconTicket /> },
-        { to: '/segnalatore/nuovo',        label: 'Nuovo Ticket',     icon: <IconPlus /> },
-        { to: '/segnalatore/assegnati',    label: 'Ticket Assegnati', icon: <IconTicket /> },
+        { to: '/segnalatore',              label: 'Ticket Aperti da me', icon: <IconTicket /> },
+        { to: '/segnalatore/nuovo',        label: 'Nuovo Ticket',        icon: <IconPlus /> },
+        { to: '/segnalatore/assegnati',    label: 'Ticket Assegnati',    icon: <IconTicket /> },
+      ]
+    case RUOLI.FRONT_OFFICE:
+      return [
+        { to: '/front-office',         label: 'Tutti i Ticket',      icon: <IconTicket /> },
+        { to: '/front-office/aperti',  label: 'Ticket Aperti da me', icon: <IconTicket /> },
+        { to: '/front-office/nuovo',   label: 'Nuovo Ticket',        icon: <IconPlus /> },
       ]
     default:
       return []
@@ -67,12 +74,31 @@ export default function Layout() {
   const { profilo, ruolo, logout } = useAuth()
   const navigate = useNavigate()
   const [menuAperto, setMenuAperto] = useState(false)
+  const [nuoviAssegnati, setNuoviAssegnati] = useState(0)
   const voci = getMenuVoci(ruolo)
 
   async function handleLogout() {
     await logout()
     navigate('/login')
   }
+
+  // Badge di notifica: ticket assegnati a me e non ancora presi in lavorazione
+  useEffect(() => {
+    if (ruolo !== RUOLI.MANUTENTORE && ruolo !== RUOLI.SEGNALATORE_MANUTENTORE) return
+
+    async function caricaNuoviAssegnati() {
+      const { data } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('manutentore_id', profilo.id)
+        .eq('stato', 'assegnato')
+      setNuoviAssegnati(data?.length || 0)
+    }
+
+    caricaNuoviAssegnati()
+    const interval = setInterval(caricaNuoviAssegnati, 60000)
+    return () => clearInterval(interval)
+  }, [ruolo, profilo?.id])
 
   const linkBase = "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-150"
   const linkAttivo = "bg-white text-[#C8181E]"
@@ -120,11 +146,18 @@ export default function Layout() {
               end={v.to.split('/').length <= 2}
               onClick={() => setMenuAperto(false)}
               className={({ isActive }) =>
-                `${linkBase} ${isActive ? linkAttivo : linkInattivo}`
+                `${linkBase} ${isActive ? linkAttivo : linkInattivo} justify-between`
               }
             >
-              {v.icon}
-              {v.label}
+              <span className="flex items-center gap-3">
+                {v.icon}
+                {v.label}
+              </span>
+              {v.label === 'Ticket Assegnati' && nuoviAssegnati > 0 && (
+                <span className="bg-white text-[#C8181E] text-xs font-bold rounded-full min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center">
+                  {nuoviAssegnati}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

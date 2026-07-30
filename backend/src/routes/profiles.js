@@ -98,7 +98,7 @@ router.patch('/:id', requireRuolo('coordinatore'), async (req, res) => {
 // ─── POST /api/admin/users — crea nuovo utente (coordinatore) ─
 router.post('/admin/create', requireRuolo('coordinatore'), async (req, res) => {
   const { email, nome, cognome, ruolo } = req.body || {}
-  const VALID_RUOLI = ['coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore']
+  const VALID_RUOLI = ['coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office']
 
   if (!email || !nome || !cognome || !ruolo) {
     return res.status(400).json({ error: 'Tutti i campi sono obbligatori' })

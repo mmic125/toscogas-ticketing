@@ -1,9 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const AuthContext = createContext(null)
 
+const IDLE_TIMEOUT_MS   = 15 * 60 * 1000  // 15 min di inattività
+const SESSION_MAX_MS    = 8 * 60 * 60 * 1000  // 8 ore dal login
+const ATTIVITA_EVENTI   = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+
 export function AuthProvider({ children }) {
+  const navigate = useNavigate()
   const [user, setUser]                     = useState(null)
   const [profilo, setProfilo]               = useState(null)
   const [loading, setLoading]               = useState(true)
@@ -87,6 +93,7 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem('access_token', data.access_token)
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    localStorage.setItem('login_at', String(Date.now()))
     setUser({ id: data.user.id, email: data.user.email })
     setProfilo(data.user)
     return data
@@ -103,6 +110,7 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem('access_token', data.access_token)
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    localStorage.setItem('login_at', String(Date.now()))
     setUser({ id: data.user.id, email: data.user.email })
     setProfilo(data.user)
     return data
@@ -118,9 +126,41 @@ export function AuthProvider({ children }) {
     }).catch(() => {})
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('login_at')
     setUser(null)
     setProfilo(null)
   }
+
+  // Logout automatico per inattività (15 min) o durata massima sessione (8h)
+  async function forceLogout() {
+    await logout()
+    navigate('/login', { replace: true, state: { sessionExpired: true } })
+  }
+
+  useEffect(() => {
+    if (!user) return
+
+    let idleTimer
+    function resetIdleTimer() {
+      clearTimeout(idleTimer)
+      idleTimer = setTimeout(forceLogout, IDLE_TIMEOUT_MS)
+    }
+
+    resetIdleTimer()
+    ATTIVITA_EVENTI.forEach(ev => window.addEventListener(ev, resetIdleTimer))
+
+    const sessionInterval = setInterval(() => {
+      const loginAt = Number(localStorage.getItem('login_at') || 0)
+      if (loginAt && Date.now() - loginAt > SESSION_MAX_MS) forceLogout()
+    }, 60 * 1000)
+
+    return () => {
+      clearTimeout(idleTimer)
+      clearInterval(sessionInterval)
+      ATTIVITA_EVENTI.forEach(ev => window.removeEventListener(ev, resetIdleTimer))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   return (
     <AuthContext.Provider value={{
