@@ -25,7 +25,10 @@ function buildWhere(query, allowedFields) {
     } else if (raw.startsWith('in.')) {
       const items = raw.slice(3).split(',').filter(Boolean)
       if (items.length) {
-        conditions.push(`t.${field} = ANY($${idx++}::text[])`)
+        // Cast la colonna (non l'array) a text: alcuni campi filtrabili
+        // sono enum Postgres (stato, categoria) o uuid (manutentore_id,
+        // segnalatore_id), che non hanno un operatore "= testo[]" nativo.
+        conditions.push(`t.${field}::text = ANY($${idx++}::text[])`)
         values.push(items)
       }
     } else if (raw.startsWith('gte.')) {
