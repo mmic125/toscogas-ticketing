@@ -186,7 +186,7 @@ export default function Analisi() {
     label, valore: tickets.filter(t => t.categoria === val).length
   })).filter(d => d.valore > 0)
 
-  const segnalatori = utenti.filter(u => ['segnalatore','segnalatore_manutentore'].includes(u.ruolo))
+  const segnalatori = utenti.filter(u => ['segnalatore','segnalatore_manutentore','front_office','coordinatore'].includes(u.ruolo))
   const manutentori = utenti.filter(u => ['manutentore','segnalatore_manutentore'].includes(u.ruolo))
 
   const perManutentore = manutentori.map(u => ({

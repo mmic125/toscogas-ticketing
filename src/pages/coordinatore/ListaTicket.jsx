@@ -166,7 +166,7 @@ export default function ListaTicket() {
     filtri.data_apertura_da || filtri.data_apertura_a ||
     filtri.data_risoluzione_da || filtri.data_risoluzione_a
 
-  const segnalatori = utenti.filter(u => ['segnalatore','segnalatore_manutentore'].includes(u.ruolo))
+  const segnalatori = utenti.filter(u => ['segnalatore','segnalatore_manutentore','front_office','coordinatore'].includes(u.ruolo))
   const manutentori = utenti.filter(u => ['manutentore','segnalatore_manutentore'].includes(u.ruolo))
 
   const opzioniSegnalatori = Object.fromEntries(
