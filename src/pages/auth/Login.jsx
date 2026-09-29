@@ -1,14 +1,12 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export default function Login() {
-  const { login, completaLoginTotp } = useAuth()
+  const { login, completaLoginTotp, sessionExpired } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const sessioneScaduta = !!location.state?.sessionExpired
 
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
@@ -89,7 +87,7 @@ export default function Login() {
           <p className="text-sm text-gray-500 mt-1">Sistema Ticketing</p>
         </div>
 
-        {sessioneScaduta && (
+        {sessionExpired && (
           <p className="text-sm text-orange-700 bg-orange-50 rounded-lg px-3 py-2 mb-4 text-center">
             Sessione scaduta, effettuare l'accesso.
           </p>

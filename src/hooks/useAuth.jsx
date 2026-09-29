@@ -6,6 +6,7 @@ const AuthContext = createContext(null)
 
 const IDLE_TIMEOUT_MS   = 15 * 60 * 1000  // 15 min di inattività
 const SESSION_MAX_MS    = 8 * 60 * 60 * 1000  // 8 ore dal login
+const REFRESH_INTERVAL_MS = 10 * 60 * 1000  // rinnova il token prima che scada (15 min)
 const ATTIVITA_EVENTI   = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
 
 export function AuthProvider({ children }) {
@@ -14,6 +15,7 @@ export function AuthProvider({ children }) {
   const [profilo, setProfilo]               = useState(null)
   const [loading, setLoading]               = useState(true)
   const [profiloLoading, setProfiloLoading] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   async function caricaProfilo() {
     setProfiloLoading(true)
@@ -50,6 +52,8 @@ export function AuthProvider({ children }) {
         if (!refreshed) {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
+          localStorage.removeItem('login_at')
+          setSessionExpired(true)
         }
       }
     } catch (e) {
@@ -80,6 +84,7 @@ export function AuthProvider({ children }) {
   useEffect(() => { initAuth() }, [])
 
   async function login(email, password) {
+    setSessionExpired(false)
     const r = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -100,6 +105,7 @@ export function AuthProvider({ children }) {
   }
 
   async function completaLoginTotp(temp_token, code) {
+    setSessionExpired(false)
     const r = await fetch(`${API_BASE}/auth/totp/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,8 +139,9 @@ export function AuthProvider({ children }) {
 
   // Logout automatico per inattività (15 min) o durata massima sessione (8h)
   async function forceLogout() {
+    setSessionExpired(true)
     await logout()
-    navigate('/login', { replace: true, state: { sessionExpired: true } })
+    navigate('/login', { replace: true })
   }
 
   useEffect(() => {
@@ -154,9 +161,17 @@ export function AuthProvider({ children }) {
       if (loginAt && Date.now() - loginAt > SESSION_MAX_MS) forceLogout()
     }, 60 * 1000)
 
+    // Rinnova silenziosamente il token prima che scada (15 min), altrimenti
+    // durante un uso continuo senza ricaricare la pagina le richieste
+    // finirebbero per fallire non appena l'access token naturale scade.
+    const refreshInterval = setInterval(() => {
+      tryRefresh()
+    }, REFRESH_INTERVAL_MS)
+
     return () => {
       clearTimeout(idleTimer)
       clearInterval(sessionInterval)
+      clearInterval(refreshInterval)
       ATTIVITA_EVENTI.forEach(ev => window.removeEventListener(ev, resetIdleTimer))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,6 +184,7 @@ export function AuthProvider({ children }) {
       ruolo: profilo?.ruolo ?? null,
       loading,
       profiloLoading,
+      sessionExpired,
       login,
       completaLoginTotp,
       logout,
