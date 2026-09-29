@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── Tipi enum ────────────────────────────────────────────────
 CREATE TYPE ruolo_utente AS ENUM (
-  'coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office'
+  'coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office', 'amministratore'
 );
 
 CREATE TYPE stato_ticket AS ENUM (
@@ -34,6 +34,7 @@ CREATE TABLE users (
   failed_attempts INTEGER NOT NULL DEFAULT 0,
   locked_until    TIMESTAMPTZ,
   must_change_pwd BOOLEAN NOT NULL DEFAULT false,
+  password_changed_at TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -120,6 +121,22 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_log_user ON audit_log(user_id);
 CREATE INDEX idx_audit_log_created ON audit_log(created_at DESC);
 CREATE INDEX idx_audit_log_action ON audit_log(action);
+
+-- ── Policy password (configurabile dall'Amministratore) ──────
+CREATE TABLE password_policy (
+  id                     INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  min_length             INT NOT NULL DEFAULT 12,
+  require_uppercase      BOOLEAN NOT NULL DEFAULT true,
+  min_uppercase          INT NOT NULL DEFAULT 1,
+  require_special        BOOLEAN NOT NULL DEFAULT false,
+  min_special            INT NOT NULL DEFAULT 1,
+  require_digit          BOOLEAN NOT NULL DEFAULT true,
+  min_digit              INT NOT NULL DEFAULT 1,
+  avoid_ambiguous_common BOOLEAN NOT NULL DEFAULT true,
+  validity_days          INT,
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO password_policy (id) VALUES (1);
 
 -- ── Trigger: updated_at automatico ──────────────────────────
 CREATE OR REPLACE FUNCTION set_updated_at()

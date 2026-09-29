@@ -387,7 +387,11 @@ export default function ListaTicket() {
                 ticketsFiltrati.map(t => (
                   <tr
                     key={t.id}
-                    onClick={() => navigate(ruolo === RUOLI.FRONT_OFFICE ? `/front-office/ticket/${t.id}` : `/coordinatore/ticket/${t.id}`)}
+                    onClick={() => navigate(
+                      ruolo === RUOLI.FRONT_OFFICE ? `/front-office/ticket/${t.id}` :
+                      ruolo === RUOLI.AMMINISTRATORE ? `/amministratore/ticket/${t.id}` :
+                      `/coordinatore/ticket/${t.id}`
+                    )}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition"
                   >
                     <td className="px-4 py-3">

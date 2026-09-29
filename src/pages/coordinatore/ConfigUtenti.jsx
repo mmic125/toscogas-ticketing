@@ -7,6 +7,7 @@ const RUOLI_LABEL = {
   manutentore:             'Manutentore',
   segnalatore_manutentore: 'Segnalatore / Manutentore',
   front_office:            'Front Office',
+  amministratore:          'Amministratore',
 }
 
 const RUOLI_COLORS = {
@@ -15,6 +16,7 @@ const RUOLI_COLORS = {
   manutentore:             'bg-green-100 text-green-800',
   segnalatore_manutentore: 'bg-orange-100 text-orange-800',
   front_office:            'bg-teal-100 text-teal-800',
+  amministratore:          'bg-red-100 text-red-800',
 }
 
 function Badge({ ruolo }) {

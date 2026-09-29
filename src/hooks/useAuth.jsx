@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { sincronizzaBozze } from '../lib/offlineDrafts'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const AuthContext = createContext(null)
@@ -175,6 +177,25 @@ export function AuthProvider({ children }) {
       ATTIVITA_EVENTI.forEach(ev => window.removeEventListener(ev, resetIdleTimer))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  // Sincronizza le bozze ticket salvate offline non appena torna la connessione
+  useEffect(() => {
+    if (!user) return
+
+    function handleOnline() {
+      sincronizzaBozze(async dati => {
+        // La QueryBuilder non rifiuta mai la Promise sugli errori HTTP,
+        // quindi va controllato esplicitamente per non perdere la bozza.
+        const { error } = await supabase.from('tickets').insert(dati)
+        if (error) throw error
+      })
+    }
+
+    window.addEventListener('online', handleOnline)
+    if (navigator.onLine) handleOnline()
+
+    return () => window.removeEventListener('online', handleOnline)
   }, [user])
 
   return (

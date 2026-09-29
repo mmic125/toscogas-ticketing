@@ -31,6 +31,16 @@ function IconKanban() {
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
   </svg>
 }
+function IconLock() {
+  return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+}
+function IconClipboard() {
+  return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+  </svg>
+}
 
 // Voci di menu per ruolo
 function getMenuVoci(ruolo) {
@@ -41,8 +51,18 @@ function getMenuVoci(ruolo) {
     { to: '/coordinatore/kanban',  label: 'Kanban Board',    icon: <IconKanban /> },
     { to: '/coordinatore/nuovo',   label: 'Nuovo Ticket',    icon: <IconPlus /> },
     { to: '/coordinatore/analisi', label: 'Analisi',         icon: <IconChart /> },
-    { to: '/coordinatore/utenti',  label: 'Gestione Utenti', icon: <IconUsers /> },
   ]
+    case RUOLI.AMMINISTRATORE:
+      return [
+        { to: '/amministratore',         label: 'Tutti i Ticket',  icon: <IconTicket /> },
+        { to: '/amministratore/kanban',  label: 'Kanban Board',    icon: <IconKanban /> },
+        { to: '/amministratore/nuovo',   label: 'Nuovo Ticket',    icon: <IconPlus /> },
+        { to: '/amministratore/analisi', label: 'Analisi',         icon: <IconChart /> },
+        { heading: 'Configurazione' },
+        { to: '/amministratore/utenti',   label: 'Gestione Utenti',   icon: <IconUsers /> },
+        { to: '/amministratore/password', label: 'Gestione Password', icon: <IconLock /> },
+        { to: '/amministratore/log',      label: 'Gestione Log',      icon: <IconClipboard /> },
+      ]
     case RUOLI.SEGNALATORE:
       return [
         { to: '/segnalatore',          label: 'Ticket Aperti da me', icon: <IconTicket /> },
@@ -140,6 +160,11 @@ export default function Layout() {
         {/* Menu voci */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {voci.map(v => (
+            v.heading ? (
+              <p key={v.heading} className="px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-red-200/70">
+                {v.heading}
+              </p>
+            ) : (
             <NavLink
               key={v.to}
               to={v.to}
@@ -159,6 +184,7 @@ export default function Layout() {
                 </span>
               )}
             </NavLink>
+            )
           ))}
         </nav>
 

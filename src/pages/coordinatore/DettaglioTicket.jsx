@@ -27,9 +27,13 @@ function Campo({ label, children }) {
 export default function DettaglioTicket() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { ruolo } = useAuth()
-  const soloLettura = ruolo === RUOLI.FRONT_OFFICE
-  const listaPath = soloLettura ? '/front-office' : '/coordinatore'
+  const { ruolo, profilo } = useAuth()
+  const puoGestire = ruolo === RUOLI.COORDINATORE || ruolo === RUOLI.AMMINISTRATORE
+  const basePath =
+    ruolo === RUOLI.AMMINISTRATORE ? '/amministratore' :
+    ruolo === RUOLI.FRONT_OFFICE   ? '/front-office' :
+    ruolo === RUOLI.SEGNALATORE || ruolo === RUOLI.SEGNALATORE_MANUTENTORE ? '/segnalatore' :
+    '/coordinatore'
 
   const [ticket, setTicket]           = useState(null)
   const [assegnatari, setAssegnatari] = useState([])
@@ -203,7 +207,10 @@ export default function DettaglioTicket() {
     setSaving(false)
   }
 
-  const chiuso = ticket?.stato === 'chiuso' || soloLettura
+  const puoModificareDati = puoGestire || (ruolo === RUOLI.FRONT_OFFICE && ticket?.segnalatore_id === profilo?.id)
+  const chiusoDefinitivamente = ticket?.stato === 'chiuso'
+  const disabilitatoDati      = chiusoDefinitivamente || !puoModificareDati
+  const disabilitatoGestione  = chiusoDefinitivamente || !puoGestire
   const oggi   = new Date().toISOString().split('T')[0]
 
   if (loading) return (
@@ -220,7 +227,7 @@ export default function DettaglioTicket() {
     <div className="max-w-4xl mx-auto">
       {/* Intestazione */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <button onClick={() => navigate(listaPath)} className="text-gray-400 hover:text-gray-600 transition">
+        <button onClick={() => navigate(basePath)} className="text-gray-400 hover:text-gray-600 transition">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -235,21 +242,27 @@ export default function DettaglioTicket() {
             )}
           </div>
         </div>
-        {!chiuso && (
+        {!chiusoDefinitivamente && (puoModificareDati || puoGestire) && (
           <div className="flex gap-2 flex-wrap">
-            <button onClick={salva} disabled={saving}
-              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
-              {saving ? 'Salvataggio...' : 'Salva modifiche'}
-            </button>
-            <button onClick={() => navigate(`/coordinatore/ticket/${id}/risoluzione`)}
-              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
-              Risoluzione
-            </button>
-            <button onClick={chiudi} disabled={saving}
-              style={{ backgroundColor: '#C8181E' }}
-              className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
-              Chiudi Ticket
-            </button>
+            {puoModificareDati && (
+              <button onClick={salva} disabled={saving}
+                className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
+                {saving ? 'Salvataggio...' : 'Salva modifiche'}
+              </button>
+            )}
+            {puoGestire && (
+              <>
+                <button onClick={() => navigate(`${basePath}/ticket/${id}/risoluzione`)}
+                  className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+                  Risoluzione
+                </button>
+                <button onClick={chiudi} disabled={saving}
+                  style={{ backgroundColor: '#C8181E' }}
+                  className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+                  Chiudi Ticket
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -266,27 +279,27 @@ export default function DettaglioTicket() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Codice Cliente</label>
-                <input type="text" name="codice_cliente" value={form.codice_cliente} onChange={handleChange} disabled={chiuso}
+                <input type="text" name="codice_cliente" value={form.codice_cliente} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Nome Cliente *</label>
-                <input type="text" name="nome_cliente" value={form.nome_cliente} onChange={handleChange} disabled={chiuso}
+                <input type="text" name="nome_cliente" value={form.nome_cliente} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Telefono</label>
-                <input type="tel" name="telefono" value={form.telefono} onChange={handleChange} disabled={chiuso}
+                <input type="tel" name="telefono" value={form.telefono} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Provincia</label>
-                <input type="text" name="provincia" value={form.provincia} onChange={handleChange} disabled={chiuso}
+                <input type="text" name="provincia" value={form.provincia} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Matricola Serbatoio</label>
-                <input type="text" name="matricola_serbatoio" value={form.matricola_serbatoio} onChange={handleChange} disabled={chiuso}
+                <input type="text" name="matricola_serbatoio" value={form.matricola_serbatoio} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
             </div>
@@ -298,7 +311,7 @@ export default function DettaglioTicket() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Categoria</label>
-                <select name="categoria" value={form.categoria} onChange={handleChange} disabled={chiuso}
+                <select name="categoria" value={form.categoria} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
                   <option value="">Seleziona...</option>
                   {Object.entries(CATEGORIE).map(([val, label]) => (
@@ -308,7 +321,7 @@ export default function DettaglioTicket() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Tipologia</label>
-                <select name="tipo_problema" value={form.tipo_problema} onChange={handleChange} disabled={chiuso}
+                <select name="tipo_problema" value={form.tipo_problema} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
                   {Object.entries(TIPI_INTERVENTO).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -317,7 +330,7 @@ export default function DettaglioTicket() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Priorità</label>
-                <select name="priorita" value={form.priorita} onChange={handleChange} disabled={chiuso}
+                <select name="priorita" value={form.priorita} onChange={handleChange} disabled={disabilitatoDati}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
                   {Object.entries(PRIORITA_LABEL).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -326,7 +339,7 @@ export default function DettaglioTicket() {
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Note Apertura</label>
-                <textarea name="note_apertura" value={form.note_apertura} onChange={handleChange} disabled={chiuso} rows={3}
+                <textarea name="note_apertura" value={form.note_apertura} onChange={handleChange} disabled={disabilitatoDati} rows={3}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
             </div>
@@ -338,21 +351,21 @@ export default function DettaglioTicket() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Note Intervento</label>
-                <textarea name="note_intervento" value={form.note_intervento} onChange={handleChange} disabled={chiuso} rows={3}
+                <textarea name="note_intervento" value={form.note_intervento} onChange={handleChange} disabled={disabilitatoGestione} rows={3}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Materiale Utilizzato</label>
-                <textarea name="materiale_utilizzato" value={form.materiale_utilizzato} onChange={handleChange} disabled={chiuso} rows={2}
+                <textarea name="materiale_utilizzato" value={form.materiale_utilizzato} onChange={handleChange} disabled={disabilitatoGestione} rows={2}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
-              <label className={`flex items-center gap-2 text-sm ${chiuso ? 'text-gray-400' : 'text-gray-700'}`}>
+              <label className={`flex items-center gap-2 text-sm ${disabilitatoGestione ? 'text-gray-400' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
                   name="materiale_scaricato"
                   checked={form.materiale_scaricato}
                   onChange={handleChange}
-                  disabled={chiuso}
+                  disabled={disabilitatoGestione}
                   className="accent-red-600 w-4 h-4"
                 />
                 Materiale scaricato dal magazzino
@@ -397,7 +410,7 @@ export default function DettaglioTicket() {
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Assegnatario Intervento
                 </label>
-                <select name="manutentore_id" value={form.manutentore_id} onChange={handleChange} disabled={chiuso}
+                <select name="manutentore_id" value={form.manutentore_id} onChange={handleChange} disabled={disabilitatoGestione}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
                   <option value="">Nessun assegnatario</option>
                   {assegnatari.map(m => (
@@ -410,10 +423,10 @@ export default function DettaglioTicket() {
                   Data Intervento Richiesta
                 </label>
                 <input type="date" name="data_intervento_richiesta" value={form.data_intervento_richiesta}
-                  onChange={handleChange} min={oggi} disabled={chiuso}
+                  onChange={handleChange} min={oggi} disabled={disabilitatoGestione}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-50 disabled:text-gray-400" />
               </div>
-              {!chiuso && (
+              {!disabilitatoGestione && (
                 <button onClick={assegna} disabled={saving}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
                   Assegna Ticket

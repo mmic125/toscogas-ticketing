@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { salvaBozza } from '../../lib/offlineDrafts'
 import {
   TIPI_INTERVENTO_COMMERCIALE,
   TIPI_INTERVENTO_TECNICO,
@@ -32,6 +33,7 @@ export default function NuovoTicket() {
   const [preview, setPreview]   = useState([])
   const [loading, setLoading]   = useState(false)
   const [errore, setErrore]     = useState('')
+  const [successo, setSuccesso] = useState('')
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -80,6 +82,27 @@ export default function NuovoTicket() {
     if (!form.categoria)             { setErrore('Seleziona una categoria.'); return }
     if (!form.tipo_problema)         { setErrore('Seleziona una tipologia di intervento.'); return }
     if (!form.priorita)              { setErrore('Seleziona una priorità.'); return }
+
+    if (!navigator.onLine) {
+      if (allegati.length > 0) {
+        setErrore('Non è possibile allegare foto/PDF mentre sei offline. Rimuovi gli allegati per salvare come bozza, oppure riprova alla riconnessione.')
+        return
+      }
+      salvaBozza({
+        codice_cliente:      form.codice_cliente.trim(),
+        nome_cliente:        form.nome_cliente.trim(),
+        matricola_serbatoio: form.matricola_serbatoio || null,
+        tipo_problema:       form.tipo_problema,
+        note_apertura:       form.note_apertura || null,
+        priorita:            form.priorita,
+        categoria:           form.categoria || null,
+        provincia:           form.provincia || null,
+        telefono:            form.telefono || null,
+      })
+      setSuccesso('Sei offline: il ticket è stato salvato come bozza e verrà inviato automaticamente alla riconnessione.')
+      setTimeout(() => navigate(-1), 2000)
+      return
+    }
 
     setLoading(true)
     try {
@@ -368,6 +391,9 @@ export default function NuovoTicket() {
 
         {errore && (
           <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{errore}</p>
+        )}
+        {successo && (
+          <p className="text-sm text-orange-700 bg-orange-50 rounded-lg px-3 py-2">{successo}</p>
         )}
 
         <div className="flex gap-3 pt-2">

@@ -56,7 +56,10 @@ export default function LavorazioneTicket() {
     setLoading(true)
     const { data: t, error } = await supabase
       .from('tickets')
-      .select('*')
+      .select(`
+        *,
+        segnalatore:profiles!tickets_segnalatore_id_fkey(nome, cognome)
+      `)
       .eq('id', id)
       .eq('manutentore_id', profilo.id)
       .single()
@@ -317,6 +320,10 @@ export default function LavorazioneTicket() {
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Data Apertura</p>
               <p className="text-gray-800">{ticket.data_apertura} <span className="text-gray-400">{formatOra(ticket.created_at)}</span></p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Segnalatore</p>
+              <p className="text-gray-800">{ticket.segnalatore ? `${ticket.segnalatore.nome} ${ticket.segnalatore.cognome}` : '—'}</p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">

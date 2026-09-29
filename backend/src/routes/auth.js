@@ -9,6 +9,7 @@ const { audit, logger } = require('../logger')
 const { authenticate }  = require('../middleware/authenticate')
 const { authenticator } = require('otplib')
 const QRCode            = require('qrcode')
+const { getPasswordPolicy, validatePassword } = require('../passwordPolicy')
 
 const router = express.Router()
 
@@ -69,6 +70,7 @@ router.post('/login', async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT u.id, u.email, u.password_hash, u.failed_attempts, u.locked_until, u.must_change_pwd, u.totp_enabled,
+        u.password_changed_at, u.created_at,
         p.nome, p.cognome, p.ruolo, p.attivo
        FROM users u
        JOIN profiles p ON p.id = u.id
@@ -112,6 +114,17 @@ router.post('/login', async (req, res) => {
       `UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = $1`,
       [utente.id]
     )
+
+    // Password scaduta secondo la policy configurata: forza il cambio al prossimo accesso
+    const policy = await getPasswordPolicy()
+    if (policy.validity_days && !utente.must_change_pwd) {
+      const riferimento = utente.password_changed_at || utente.created_at
+      const scadutaDa = Date.now() - new Date(riferimento).getTime()
+      if (scadutaDa > policy.validity_days * 24 * 60 * 60 * 1000) {
+        await db.query('UPDATE users SET must_change_pwd = true WHERE id = $1', [utente.id])
+        utente.must_change_pwd = true
+      }
+    }
 
     // Se MFA attiva: non rilasciare i token, chiedi il codice TOTP
     if (utente.totp_enabled) {
@@ -224,14 +237,17 @@ router.post('/change-password', authenticate, async (req, res) => {
   if (!new_password) {
     return res.status(400).json({ error: 'Parametri mancanti' })
   }
-  if (new_password.length < 12) {
-    return res.status(400).json({ error: 'La password deve essere di almeno 12 caratteri' })
+
+  const policy = await getPasswordPolicy()
+  const errori = validatePassword(new_password, policy)
+  if (errori.length > 0) {
+    return res.status(400).json({ error: errori[0] })
   }
 
   try {
     const hash = await argon2.hash(new_password, ARGON2_OPTIONS)
     await db.query(
-      `UPDATE users SET password_hash = $1, must_change_pwd = false WHERE id = $2`,
+      `UPDATE users SET password_hash = $1, must_change_pwd = false, password_changed_at = NOW() WHERE id = $2`,
       [hash, req.user.id]
     )
 
@@ -408,10 +424,10 @@ router.post('/totp/verify', async (req, res) => {
   }
 })
 
-// ─── POST /auth/totp/disable — il coordinatore disattiva MFA ──
+// ─── POST /auth/totp/disable — l'amministratore disattiva MFA ─
 router.post('/totp/disable', authenticate, async (req, res) => {
-  if (req.user.ruolo !== 'coordinatore') {
-    return res.status(403).json({ error: 'Solo il coordinatore può disattivare la MFA' })
+  if (req.user.ruolo !== 'amministratore') {
+    return res.status(403).json({ error: 'Solo l\'amministratore può disattivare la MFA' })
   }
   const { user_id } = req.body || {}
   if (!user_id) return res.status(400).json({ error: 'user_id mancante' })

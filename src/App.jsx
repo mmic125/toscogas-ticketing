@@ -16,6 +16,10 @@ import Analisi         from './pages/coordinatore/Analisi'
 import ConfigUtenti    from './pages/coordinatore/ConfigUtenti'
 import KanbanBoard     from './pages/coordinatore/KanbanBoard'
 
+// Amministratore
+import ConfigPassword  from './pages/amministratore/ConfigPassword'
+import ConfigLog       from './pages/amministratore/ConfigLog'
+
 // Segnalatore
 import NuovoTicket       from './pages/segnalatore/NuovoTicket'
 import ListaTicketAperti from './pages/segnalatore/ListaTicketAperti'
@@ -62,6 +66,7 @@ function HomeRedirect() {
     case RUOLI.MANUTENTORE:             return <Navigate to="/manutentore" replace />
     case RUOLI.SEGNALATORE_MANUTENTORE: return <Navigate to="/segnalatore" replace />
     case RUOLI.FRONT_OFFICE:            return <Navigate to="/front-office" replace />
+    case RUOLI.AMMINISTRATORE:          return <Navigate to="/amministratore" replace />
     default:                            return <Navigate to="/login" replace />
   }
 }
@@ -93,8 +98,24 @@ function AppRoutes() {
         <Route path="ticket/:id" element={<DettaglioTicket />} />
         <Route path="ticket/:id/risoluzione" element={<RisoluzioneTicket />} />
         <Route path="analisi" element={<Analisi />} />
-        <Route path="utenti" element={<ConfigUtenti />} />
         <Route path="nuovo" element={<NuovoTicket />} />
+      </Route>
+
+      {/* Amministratore — stessa configurazione del coordinatore + sezione Configurazione */}
+      <Route path="/amministratore" element={
+        <ProtectedRoute ruoliConsentiti={[RUOLI.AMMINISTRATORE]}>
+          <Layout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<ListaTicket />} />
+        <Route path="kanban" element={<KanbanBoard />} />
+        <Route path="ticket/:id" element={<DettaglioTicket />} />
+        <Route path="ticket/:id/risoluzione" element={<RisoluzioneTicket />} />
+        <Route path="analisi" element={<Analisi />} />
+        <Route path="nuovo" element={<NuovoTicket />} />
+        <Route path="utenti" element={<ConfigUtenti />} />
+        <Route path="password" element={<ConfigPassword />} />
+        <Route path="log" element={<ConfigLog />} />
       </Route>
 
       {/* Segnalatore */}
@@ -105,7 +126,7 @@ function AppRoutes() {
       }>
         <Route index element={<ListaTicketAperti />} />
         <Route path="nuovo" element={<NuovoTicket />} />
-        <Route path="ticket/:id" element={<NuovoTicket />} />
+        <Route path="ticket/:id" element={<DettaglioTicket />} />
       </Route>
 
       {/* Manutentore */}

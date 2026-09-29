@@ -4,6 +4,7 @@ export const RUOLI = {
   MANUTENTORE: 'manutentore',
   SEGNALATORE_MANUTENTORE: 'segnalatore_manutentore',
   FRONT_OFFICE: 'front_office',
+  AMMINISTRATORE: 'amministratore',
 }
 
 export const STATI_TICKET = {
@@ -22,12 +23,14 @@ export const PRIORITA = {
 }
 
 export const TIPI_INTERVENTO_COMMERCIALE = {
+  amministrazione:        'Amministrazione',
   condizioni_commerciali: 'Condizioni commerciali',
   nuova_pratica:          'Nuova pratica',
   dilazione_pagamento:    'Pagamenti',
   richiesta_disdetta:     'Richiesta disdetta',
   sopralluogo:            'Sopralluogo',
   subentro:               'Subentro',
+  altro:                  'Altro',
 }
 
 export const TIPI_INTERVENTO_TECNICO = {

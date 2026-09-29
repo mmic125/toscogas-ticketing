@@ -64,8 +64,8 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// ─── PATCH /api/profiles/:id — solo coordinatore ─────────────
-router.patch('/:id', requireRuolo('coordinatore'), async (req, res) => {
+// ─── PATCH /api/profiles/:id — solo amministratore ───────────
+router.patch('/:id', requireRuolo('amministratore'), async (req, res) => {
   const allowed = ['nome', 'cognome', 'ruolo', 'attivo']
   const updates = []
   const values  = []
@@ -95,10 +95,10 @@ router.patch('/:id', requireRuolo('coordinatore'), async (req, res) => {
   }
 })
 
-// ─── POST /api/admin/users — crea nuovo utente (coordinatore) ─
-router.post('/admin/create', requireRuolo('coordinatore'), async (req, res) => {
+// ─── POST /api/admin/users — crea nuovo utente (amministratore) ─
+router.post('/admin/create', requireRuolo('amministratore'), async (req, res) => {
   const { email, nome, cognome, ruolo } = req.body || {}
-  const VALID_RUOLI = ['coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office']
+  const VALID_RUOLI = ['coordinatore', 'segnalatore', 'manutentore', 'segnalatore_manutentore', 'front_office', 'amministratore']
 
   if (!email || !nome || !cognome || !ruolo) {
     return res.status(400).json({ error: 'Tutti i campi sono obbligatori' })
@@ -155,8 +155,8 @@ router.post('/admin/create', requireRuolo('coordinatore'), async (req, res) => {
   }
 })
 
-// ─── POST /api/profiles/admin/reset-password — reset password (coordinatore) ─
-router.post('/admin/reset-password', requireRuolo('coordinatore'), async (req, res) => {
+// ─── POST /api/profiles/admin/reset-password — reset password (amministratore) ─
+router.post('/admin/reset-password', requireRuolo('amministratore'), async (req, res) => {
   const { user_id } = req.body || {}
   if (!user_id) return res.status(400).json({ error: 'user_id mancante' })
 

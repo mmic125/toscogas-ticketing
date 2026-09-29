@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import {
   TIPI_INTERVENTO, PRIORITA_LABEL, STATI_LABEL,
-  PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE,
+  PRIORITA_COLORS, STATO_COLORS, CATEGORIE, PROVINCE, RUOLI,
   MAX_FOTO, MAX_FOTO_MB, FORMATI_ACCETTATI, formatOra
 } from '../../lib/costanti'
 
@@ -18,6 +19,8 @@ function Badge({ testo, colori }) {
 export default function RisoluzioneTicket() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { ruolo } = useAuth()
+  const basePath = ruolo === RUOLI.AMMINISTRATORE ? '/amministratore' : '/coordinatore'
 
   const [ticket, setTicket]     = useState(null)
   const [allegati, setAllegati] = useState([])
@@ -50,7 +53,10 @@ export default function RisoluzioneTicket() {
     setLoading(true)
     const { data: t, error } = await supabase
       .from('tickets')
-      .select('*')
+      .select(`
+        *,
+        segnalatore:profiles!tickets_segnalatore_id_fkey(nome, cognome)
+      `)
       .eq('id', id)
       .single()
 
@@ -192,7 +198,7 @@ export default function RisoluzioneTicket() {
 
     if (nuovoStato === 'risolto') {
       setSuccesso('Risoluzione completata. Ticket impostato come Risolto.')
-      setTimeout(() => navigate(`/coordinatore/ticket/${id}`), 1500)
+      setTimeout(() => navigate(`${basePath}/ticket/${id}`), 1500)
     } else {
       setSuccesso('Risoluzione parziale salvata.')
       setNuoviAllegati([])
@@ -220,7 +226,7 @@ export default function RisoluzioneTicket() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <button onClick={() => navigate(`/coordinatore/ticket/${id}`)} className="text-gray-400 hover:text-gray-600 transition">
+        <button onClick={() => navigate(`${basePath}/ticket/${id}`)} className="text-gray-400 hover:text-gray-600 transition">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -309,6 +315,10 @@ export default function RisoluzioneTicket() {
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Data Apertura</p>
               <p className="text-gray-800">{ticket.data_apertura} <span className="text-gray-400">{formatOra(ticket.created_at)}</span></p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Segnalatore</p>
+              <p className="text-gray-800">{ticket.segnalatore ? `${ticket.segnalatore.nome} ${ticket.segnalatore.cognome}` : '—'}</p>
             </div>
             {ticket.note_apertura && (
               <div className="col-span-2">

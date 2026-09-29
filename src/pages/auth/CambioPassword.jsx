@@ -1,20 +1,59 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 const COMMON_PASSWORDS = [
   'Password1!', 'Password1', 'Password123', 'Qwerty123!', 'Admin1234!',
   'Benvenuto1!', 'Toscogas1!', 'Toscogas12', 'Temporanea1!', 'Abc12345!',
   'Passw0rd!', 'Welcome1!', 'Letmein1!', 'Changeme1!', 'Summer2026!',
 ]
+const AMBIGUOUS_CHARS_RE = /[lI1O0]/
 
-function validaPassword(pwd) {
-  const errori = []
-  if (pwd.length < 12)                  errori.push('Almeno 12 caratteri')
-  if (!/[A-Z]/.test(pwd))               errori.push('Almeno una lettera maiuscola')
-  if (!/[0-9]/.test(pwd))               errori.push('Almeno un numero')
-  if (COMMON_PASSWORDS.includes(pwd))   errori.push('Password troppo comune, scegline una diversa')
-  return errori
+const DEFAULT_POLICY = {
+  min_length: 12,
+  require_uppercase: true, min_uppercase: 1,
+  require_special: false, min_special: 1,
+  require_digit: true, min_digit: 1,
+  avoid_ambiguous_common: true,
+}
+
+function requisitiDaPolicy(policy) {
+  const requisiti = [
+    { label: `Almeno ${policy.min_length} caratteri`, ok: p => p.length >= policy.min_length },
+  ]
+  if (policy.require_uppercase) {
+    requisiti.push({
+      label: `Almeno ${policy.min_uppercase} lettera/e maiuscola/e`,
+      ok: p => (p.match(/[A-Z]/g) || []).length >= policy.min_uppercase,
+    })
+  }
+  if (policy.require_digit) {
+    requisiti.push({
+      label: `Almeno ${policy.min_digit} numero/i`,
+      ok: p => (p.match(/[0-9]/g) || []).length >= policy.min_digit,
+    })
+  }
+  if (policy.require_special) {
+    requisiti.push({
+      label: `Almeno ${policy.min_special} carattere/i speciale/i`,
+      ok: p => (p.match(/[^A-Za-z0-9]/g) || []).length >= policy.min_special,
+    })
+  }
+  if (policy.avoid_ambiguous_common) {
+    requisiti.push({
+      label: 'Nessun carattere ambiguo (l, I, 1, O, 0) né password comune',
+      ok: p => p && !AMBIGUOUS_CHARS_RE.test(p) && !COMMON_PASSWORDS.includes(p),
+    })
+  }
+  return requisiti
+}
+
+function validaPassword(pwd, policy) {
+  return requisitiDaPolicy(policy)
+    .filter(r => !r.ok(pwd))
+    .map(r => r.label)
 }
 
 function ToggleMostraPassword({ mostra, onToggle }) {
@@ -40,20 +79,15 @@ function ToggleMostraPassword({ mostra, onToggle }) {
   )
 }
 
-function RequisitiPassword({ password }) {
-  const requisiti = [
-    { label: 'Almeno 12 caratteri',         ok: password.length >= 12 },
-    { label: 'Almeno una lettera maiuscola', ok: /[A-Z]/.test(password) },
-    { label: 'Almeno un numero',             ok: /[0-9]/.test(password) },
-  ]
-
+function RequisitiPassword({ password, policy }) {
   if (!password) return null
+  const requisiti = requisitiDaPolicy(policy)
 
   return (
     <ul className="mt-2 space-y-1">
       {requisiti.map(r => (
-        <li key={r.label} className={`flex items-center gap-1.5 text-xs ${r.ok ? 'text-green-600' : 'text-gray-400'}`}>
-          <span>{r.ok ? '✓' : '○'}</span>
+        <li key={r.label} className={`flex items-center gap-1.5 text-xs ${r.ok(password) ? 'text-green-600' : 'text-gray-400'}`}>
+          <span>{r.ok(password) ? '✓' : '○'}</span>
           {r.label}
         </li>
       ))}
@@ -65,11 +99,23 @@ export default function CambioPassword() {
   const { caricaProfilo } = useAuth()
   const navigate = useNavigate()
 
+  const [policy, setPolicy] = useState(DEFAULT_POLICY)
   const [form, setForm] = useState({ nuova: '', conferma: '' })
   const [errore,  setErrore]  = useState('')
   const [loading, setLoading] = useState(false)
   const [mostraNuova,   setMostraNuova]   = useState(false)
   const [mostraConferma, setMostraConferma] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/password-policy`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setPolicy(data) })
+      .catch(() => {})
+  }, [])
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -79,7 +125,7 @@ export default function CambioPassword() {
     e.preventDefault()
     setErrore('')
 
-    const erroriValidazione = validaPassword(form.nuova)
+    const erroriValidazione = validaPassword(form.nuova, policy)
     if (erroriValidazione.length > 0) {
       setErrore(erroriValidazione[0])
       return
@@ -154,11 +200,11 @@ export default function CambioPassword() {
                 onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Minimo 12 caratteri"
+                placeholder={`Minimo ${policy.min_length} caratteri`}
               />
               <ToggleMostraPassword mostra={mostraNuova} onToggle={() => setMostraNuova(v => !v)} />
             </div>
-            <RequisitiPassword password={form.nuova} />
+            <RequisitiPassword password={form.nuova} policy={policy} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">

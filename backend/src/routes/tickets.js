@@ -120,9 +120,17 @@ router.get('/:id', async (req, res) => {
     const ticket = rows[0]
     const ruolo  = req.user.ruolo
 
-    // Manutentori vedono solo i propri
-    if ((ruolo === 'manutentore' || ruolo === 'segnalatore_manutentore')
-        && ticket.manutentore_id !== req.user.id) {
+    // Manutentori vedono solo i propri assegnati; i segnalatore/manutentore
+    // vedono anche quelli aperti da loro come segnalatori (stessa logica di GET /)
+    if (ruolo === 'manutentore' && ticket.manutentore_id !== req.user.id) {
+      return res.status(403).json({ error: 'Accesso non consentito' })
+    }
+    if (ruolo === 'segnalatore_manutentore'
+        && ticket.manutentore_id !== req.user.id && ticket.segnalatore_id !== req.user.id) {
+      return res.status(403).json({ error: 'Accesso non consentito' })
+    }
+    // Segnalatore: solo i ticket aperti da sé stesso
+    if (ruolo === 'segnalatore' && ticket.segnalatore_id !== req.user.id) {
       return res.status(403).json({ error: 'Accesso non consentito' })
     }
 
@@ -169,18 +177,23 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     // Verifica esistenza e permessi
-    const check = await db.query('SELECT manutentore_id, stato FROM tickets WHERE id = $1', [req.params.id])
+    const check = await db.query('SELECT manutentore_id, segnalatore_id, stato FROM tickets WHERE id = $1', [req.params.id])
     if (!check.rows[0]) return res.status(404).json({ error: 'Ticket non trovato' })
 
     const ticket = check.rows[0]
     const ruolo  = req.user.ruolo
 
-    // Front Office è sola lettura anche lato server
-    if (ruolo === 'front_office') {
+    // Segnalatore: solo visualizzazione, nessuna modifica consentita
+    if (ruolo === 'segnalatore') {
       return res.status(403).json({ error: 'Accesso in sola lettura' })
     }
 
-    // I manutentori possono aggiornare solo i propri ticket
+    // Front Office può modificare solo i dati cliente dei ticket aperti da sé stesso
+    if (ruolo === 'front_office' && ticket.segnalatore_id !== req.user.id) {
+      return res.status(403).json({ error: 'Accesso in sola lettura' })
+    }
+
+    // I manutentori possono aggiornare solo i propri ticket assegnati
     if ((ruolo === 'manutentore' || ruolo === 'segnalatore_manutentore')
         && ticket.manutentore_id !== req.user.id) {
       return res.status(403).json({ error: 'Accesso non consentito' })
@@ -198,8 +211,15 @@ router.patch('/:id', async (req, res) => {
       'matricola_serbatoio', 'note_intervento', 'materiale_utilizzato',
       'stato', 'data_intervento',
     ]
+    const FRONT_OFFICE_FIELDS = [
+      'codice_cliente', 'nome_cliente', 'matricola_serbatoio', 'tipo_problema',
+      'priorita', 'categoria', 'provincia', 'telefono', 'note_apertura',
+    ]
 
-    const allowed = ruolo === 'coordinatore' ? COORD_FIELDS : MAN_FIELDS
+    const allowed =
+      (ruolo === 'coordinatore' || ruolo === 'amministratore') ? COORD_FIELDS :
+      ruolo === 'front_office' ? FRONT_OFFICE_FIELDS :
+      MAN_FIELDS
     const updates = []
     const values  = []
     let   idx     = 1

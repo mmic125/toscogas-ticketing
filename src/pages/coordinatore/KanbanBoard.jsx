@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import {
   STATI_LABEL, PRIORITA_LABEL, TIPI_INTERVENTO,
-  STATO_COLORS, PRIORITA_COLORS, CATEGORIE
+  STATO_COLORS, PRIORITA_COLORS, CATEGORIE, RUOLI
 } from '../../lib/costanti'
 
 function Badge({ testo, colori }) {
@@ -80,6 +81,8 @@ function TicketCard({ ticket, onClick }) {
 
 export default function KanbanBoard() {
   const navigate = useNavigate()
+  const { ruolo } = useAuth()
+  const basePath = ruolo === RUOLI.AMMINISTRATORE ? '/amministratore' : '/coordinatore'
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [cerca, setCerca]     = useState('')
@@ -158,7 +161,7 @@ export default function KanbanBoard() {
                     <TicketCard
                       key={t.id}
                       ticket={t}
-                      onClick={id => navigate(`/coordinatore/ticket/${id}`)}
+                      onClick={id => navigate(`${basePath}/ticket/${id}`)}
                     />
                   ))
                 )}
