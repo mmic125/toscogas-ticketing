@@ -30,6 +30,7 @@ export const TIPI_INTERVENTO_COMMERCIALE = {
   richiesta_disdetta:     'Richiesta disdetta',
   sopralluogo:            'Sopralluogo',
   subentro:               'Subentro',
+  nota_credito:           'Nota Credito',
   altro:                  'Altro',
 }
 
